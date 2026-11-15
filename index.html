@@ -142,6 +142,19 @@
   .card h3 { margin: 0; font-size: 14px; color: #555; font-weight: normal; }
   .card .total, .card .amount { font-size: 22px; font-weight: bold; }
   .jobCard { background: #fbebeb; border: 2px solid crimson; }
+  #pctBox { margin-inline-end: 6px; }
+  /* Job summary: name, job spending, left (no income column); click a name to see its spending */
+  #jobSummaryList .periodRow { grid-template-columns: 1.4fr 1fr 1fr; }
+  #jobSummaryList .clickRow { cursor: pointer; }
+  #jobSummaryList .clickRow:hover { background: #fff3e0; }
+  #jobSummaryList .clickRow .period { color: #b45f06; }
+  .periodDetail { background: #fff8ef; border-bottom: 1px solid #eee; padding: 4px 10px 6px 10px; font-size: 14px; }
+  .detailLine { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 2px 0; align-items: center; }
+  .detailLine > div:first-child { color: #888; font-size: 13px; }
+  .detailAmount { color: crimson; font-weight: bold; direction: ltr; }
+  .detailTotal { border-top: 1px solid #f0c9a0; margin-top: 3px; padding-top: 4px; font-weight: bold; }
+  .card.moneyInCard { position: relative; }
+  .card.moneyInCard .addIncome { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; padding: 0; font-size: 20px; line-height: 1; border: none; border-radius: 8px; background: green; color: white; cursor: pointer; }
   .col.in .incomeAdd { margin: 0 0 6px 0; }
   .listTitle { font-size: 14px; color: #555; text-align: center; margin: 2px 0 4px 0; }
   .entryList { margin-bottom: 8px; }
@@ -296,7 +309,6 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
           <input type="text" id="typed" inputmode="decimal" data-p="typePlaceholder">
           <button class="arrowJob" id="arrowJob" onclick="addArrow('job')">&#11015;</button>
         </div>
-        <div class="arrowKey" data-t="arrowKey"></div>
       </div>
     </div>
     <div class="heard" id="heard"></div>
@@ -305,7 +317,8 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
       <h2 class="income" data-t="incomeTitle"></h2>
       <!-- Money in: two equal cards, the add field, then the list -->
       <div class="cards">
-        <div class="card">
+        <div class="card moneyInCard">
+          <button class="addIncome" onclick="addIncome()" data-t-title="addPlaceholder">+</button>
           <h3 data-t="moneyIn"></h3>
           <div class="total income" id="tIncome">0.00</div>
         </div>
@@ -313,10 +326,6 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
           <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
           <div class="amount" id="tTen">0.00</div>
         </div>
-      </div>
-      <div class="incomeAdd">
-        <input type="text" id="typedIncome" inputmode="decimal" data-p="addPlaceholder">
-        <button class="addIncome" onclick="addIncome()">+</button>
       </div>
       <ul id="listIncome" class="entryList"></ul>
       <!-- Job spending: its total, then the list -->
@@ -613,6 +622,7 @@ const TEXT = {
     startExpenses: 'הוצאות',
     startIncome: 'הכנסות',
     startNewCard: 'כרטיס חדש',
+    noSpending: 'אין הוצאות עבודה בתקופה הזו.',
     newCardBtn: '+ כרטיס חדש',
     newCardAdded: 'נפתח כרטיס חדש: ',
     startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד". סגול: אמרו שם לכרטיס חדש.',
@@ -714,6 +724,7 @@ const TEXT = {
     startExpenses: 'Expenses',
     startIncome: 'Income',
     startNewCard: 'New card',
+    noSpending: 'No job spending in this period.',
     newCardBtn: '+ New card',
     newCardAdded: 'New card opened: ',
     startHint: 'Red and green: say an amount and a name, for example "100 David". Purple: say a name for a new card.',
@@ -775,7 +786,7 @@ function applyLang() {
   document.getElementById('langBtn').textContent = t.button;
   document.getElementById('arrowJob').title = t.jobSpending;
   document.getElementById('titleEdit').title = t.rename;
-  heard.textContent = t.hint;
+  heard.textContent = '';
   renderHome();
   renderPersonal();
   renderSummaries();
@@ -789,6 +800,7 @@ function toggleLang() {
 
 // ---- Weekly and monthly summaries (weeks start on Sunday, months are calendar months) ----
 let jobView = 'week';
+const openSummaryRows = new Set(); // names clicked open in the job summary ("view|period|box")
 let personalView = 'week';
 function setJobView(v) { jobView = v; renderSummaries(); }
 function setPersonalView(v) { personalView = v; renderSummaries(); }
@@ -848,8 +860,9 @@ function renderSummaries() {
     if (!d) return;
     const k = periodKey(d, jobView);
     const period = jobPeriods[k] = jobPeriods[k] || {};
-    const row = period[b.id] = period[b.id] || { name: boxLabel(b, bi), income: 0, job: 0 };
+    const row = period[b.id] = period[b.id] || { name: boxLabel(b, bi), income: 0, job: 0, items: [] };
     row[e.kind] += e.amount;
+    if (e.kind === 'job') row.items.push(e);
   }));
   const jobBox = document.getElementById('jobSummaryList');
   jobBox.innerHTML = '';
@@ -858,7 +871,7 @@ function renderSummaries() {
   else {
     const head = document.createElement('div');
     head.className = 'periodRow head';
-    head.append(cell(''), cell(t.colIn), cell(t.colJob), cell(t.colLeft));
+    head.append(cell(''), cell(t.colJob), cell(t.colLeft));
     jobBox.appendChild(head);
     jobKeys.forEach(k => {
       const title = document.createElement('div');
@@ -872,12 +885,39 @@ function renderSummaries() {
         totalJob += r.job;
         const row = document.createElement('div');
         row.className = 'periodRow';
-        row.append(cell(r.name, 'period'), cell(r.income.toFixed(2)), cell(r.job.toFixed(2)), cell((r.income - r.job).toFixed(2)));
+        // Click the name to see only this card's job spending in this period.
+        const openKey = jobView + '|' + k + '|' + id;
+        const isOpen = openSummaryRows.has(openKey);
+        row.classList.add('clickRow');
+        row.append(cell((isOpen ? '▾ ' : '▸ ') + r.name, 'period'), cell(r.job.toFixed(2)), cell((r.income - r.job).toFixed(2)));
+        row.onclick = () => {
+          if (openSummaryRows.has(openKey)) openSummaryRows.delete(openKey); else openSummaryRows.add(openKey);
+          renderSummaries();
+        };
         jobBox.appendChild(row);
+        if (isOpen) {
+          const detail = document.createElement('div');
+          detail.className = 'periodDetail';
+          if (r.items.length === 0) detail.appendChild(cell(t.noSpending, 'savedTitle'));
+          r.items.slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(e => {
+            const line = document.createElement('div');
+            line.className = 'detailLine';
+            line.append(cell(e.date || ''), cell(e.note || ''), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            detail.appendChild(line);
+          });
+          // Last line: the total of this card's job spending in this period.
+          if (r.items.length) {
+            const sumLine = document.createElement('div');
+            sumLine.className = 'detailLine detailTotal';
+            sumLine.append(cell(''), cell(t.totalLabel + ' - ' + r.name), cell('-' + r.job.toFixed(2), 'detailAmount'));
+            detail.appendChild(sumLine);
+          }
+          jobBox.appendChild(detail);
+        }
       });
       const total = document.createElement('div');
       total.className = 'periodRow totalRow';
-      total.append(cell(t.totalLabel, 'period'), cell(totalIncome.toFixed(2)), cell(totalJob.toFixed(2)), cell((totalIncome - totalJob).toFixed(2)));
+      total.append(cell(t.totalLabel, 'period'), cell(totalJob.toFixed(2)), cell((totalIncome - totalJob).toFixed(2)));
       jobBox.appendChild(total);
     });
   }
@@ -1351,16 +1391,15 @@ function handleText(sentence) {
 }
 
 // Adding money in from the Money coming in square.
-function addIncome() {
-  const box = document.getElementById('typedIncome');
-  const amount = findAmount(box.value);
-  if (amount === null) { heard.textContent = T().typeFirstPlus; return; }
+// The green + in the Money coming in card asks for the amount in a small window.
+async function addIncome() {
+  const answer = await askText(T().addPlaceholder, '');
+  if (answer === null || answer.trim() === '') return;
+  const amount = findAmount(answer);
+  if (amount === null) { heard.textContent = T().notNumber; return; }
   addEntry('income', amount, T().typedNote + amount.toFixed(2));
   heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.income;
-  box.value = '';
-  box.focus();
 }
-document.getElementById('typedIncome').addEventListener('keydown', e => { if (e.key === 'Enter') addIncome(); });
 
 // Typing a number and pressing the red arrow adds it to job spending.
 function addArrow(kind) {
@@ -1547,7 +1586,7 @@ function openApp(id) {
   document.getElementById('home').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('pctBox').value = cur().pct;
-  heard.textContent = T().hint;
+  heard.textContent = ''; // no hint text; only what was added shows here
   showName();
   render();
 }

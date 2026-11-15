@@ -149,7 +149,29 @@
   .shrinkBtn { align-self: center; margin-bottom: 6px; padding: 6px 14px; font-size: 16px; border: none; border-radius: 8px; background: #666; color: white; cursor: pointer; }
 .savedTitle { font-size: 15px; color: #666; }
 #startPage { display: none; gap: 30px; justify-content: center; align-items: center; flex-direction: column; min-height: 80vh; direction: ltr; }
-.startMic { width: 230px; height: 230px; border-radius: 115px; border: none; color: white; font-size: 90px; cursor: pointer; }
+.startMic { width: min(200px, 42vw); height: min(200px, 42vw); border-radius: 50%; border: none; color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0; }
+.startMic .micIcon { font-size: min(52px, 11vw); line-height: 1; }
+.startMic .micLabel { font-size: min(28px, 6.5vw); font-weight: bold; }
+.startRow { display: flex; gap: min(40px, 6vw); justify-content: center; }
+.startMic.purple { background: #7a3db8; width: min(133px, 28vw); height: min(133px, 28vw); gap: 4px; }
+.startMic.purple .micIcon { font-size: min(35px, 7.5vw); }
+.startMic.purple .micLabel { font-size: min(19px, 4.5vw); }
+/* Job summary and history: a closed bar until clicked; only one is open at a time */
+.panelTitle { cursor: pointer; user-select: none; }
+.panelTitle::after { content: ' \25B4'; }
+.panel.closed .panelTitle::after { content: ' \25BE'; }
+.panel.closed .viewTabs, .panel.closed .summaryList, .panel.closed #historyList { display: none; }
+#jobSummary.closed, #historyBox.closed { padding: 6px 10px; }
+.panel.closed .panelTitle { margin: 0; }
+#jobSummary:not(.closed) .summaryList { max-height: 52vh; }
+#historyBox:not(.closed) { max-height: 66vh; }
+/* While one of them is open, the small boxes get smaller to make room */
+body.compactBoxes #homeRow #home { height: 84px; padding-top: 4px; padding-bottom: 4px; gap: 8px; }
+body.compactBoxes .tile { width: 110px; height: 68px; border-width: 2px; border-radius: 12px; gap: 0; padding: 4px; }
+body.compactBoxes .tile .name { font-size: 14px; margin-top: 8px; }
+body.compactBoxes .tile .num { font-size: 15px; }
+body.compactBoxes .tile .opened { display: none; }
+body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 0 5px; font-size: 12px; top: 3px; }
 .startMic.blue { background: #d32f2f; }
 .startMic.green { background: #2e9e44; }
 .startMic.listening { box-shadow: 0 0 0 14px rgba(224,69,123,0.45); }
@@ -181,7 +203,13 @@
 </div>
 <button class="langBtn" id="langBtn" onclick="toggleLang()">English</button>
 
-<div id="startPage"><button class="startMic blue" id="startBlue">&#127908;</button><button class="startMic green" id="startGreen">&#127908;</button><span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button></div>
+<div id="startPage">
+  <div class="startRow">
+    <button class="startMic blue" id="startBlue"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startExpenses"></span></button>
+    <button class="startMic green" id="startGreen"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startIncome"></span></button>
+  </div>
+  <button class="startMic purple" id="startPurple"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startNewCard"></span></button>
+  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button></div>
 <button id="toFront" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10">&#127908;</button>
 <!-- The small boxes are made by the script below. -->
 <div id="homeRow">
@@ -193,8 +221,8 @@
 </div>
 <div id="middleArea">
 <div id="summaryRow">
-  <div class="summaryBox" id="jobSummary">
-    <h2 class="sideTitle jobColor" data-t="jobSummaryTitle"></h2>
+  <div class="summaryBox panel closed" id="jobSummary">
+    <h2 class="sideTitle jobColor panelTitle" data-t="jobSummaryTitle" onclick="togglePanel('summary')"></h2>
     <div class="viewTabs">
       <button id="jobDayBtn" class="viewTab" onclick="setJobView('day')" data-t="daily"></button>
       <button id="jobWeekBtn" class="viewTab active" onclick="setJobView('week')" data-t="weekly"></button>
@@ -203,8 +231,8 @@
     <div class="summaryList" id="jobSummaryList"></div>
   </div>
 </div>
-<div id="historyBox">
-  <h2 class="sideTitle historyTitle" data-t="historyTitle"></h2>
+<div id="historyBox" class="panel closed">
+  <h2 class="sideTitle historyTitle panelTitle" data-t="historyTitle" onclick="togglePanel('history')"></h2>
   <div id="historyList"></div>
 </div>
 </div>
@@ -558,7 +586,11 @@ const TEXT = {
     noVoice: 'זיהוי קול לא נתמך בדפדפן הזה. הקלידו מספר ולחצו על חץ.',
     micBlocked: 'אין גישה למיקרופון. אפשרו אותו בתפריט ההרשאות של הדף.',
     enterBtn: 'ניהול כספים',
-    startHint: 'אדום: אמרו סכום ושם, למשל "מאה לדוד" - הוצאות עבודה. ירוק: אותו דבר - כסף שנכנס.',
+    startExpenses: 'הוצאות',
+    startIncome: 'הכנסות',
+    startNewCard: 'כרטיס חדש',
+    newCardAdded: 'נפתח כרטיס חדש: ',
+    startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד". סגול: אמרו שם לכרטיס חדש.',
     syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
     loadError: 'לא הצלחתי לטעון את הנתונים. בדקו את החיבור לאינטרנט.',
     tryAgain: 'נסו שוב',
@@ -654,7 +686,11 @@ const TEXT = {
     noVoice: 'Voice is not supported in this browser. Type a number and press an arrow.',
     micBlocked: 'No access to the microphone. Allow it in the page Permissions menu.',
     enterBtn: 'Money management',
-    startHint: 'Red: say an amount and a name, for example "100 David" - job spending. Green: the same - money in.',
+    startExpenses: 'Expenses',
+    startIncome: 'Income',
+    startNewCard: 'New card',
+    newCardAdded: 'New card opened: ',
+    startHint: 'Red and green: say an amount and a name, for example "100 David". Purple: say a name for a new card.',
     syncError: 'Saving did not work. Check your internet connection, trying again...',
     loadError: 'Could not load your data. Check your internet connection.',
     tryAgain: 'Try again',
@@ -1445,6 +1481,19 @@ function loadBackupFile(event) {
   reader.readAsText(file);
 }
 
+// Job summary and history start as closed bars. Clicking one opens it (and closes the other);
+// while one is open the small boxes are drawn smaller to make room.
+let openPanel = null; // null, 'summary' or 'history'
+function togglePanel(which) {
+  openPanel = openPanel === which ? null : which;
+  applyPanels();
+}
+function applyPanels() {
+  document.getElementById('jobSummary').classList.toggle('closed', openPanel !== 'summary');
+  document.getElementById('historyBox').classList.toggle('closed', openPanel !== 'history');
+  document.body.classList.toggle('compactBoxes', openPanel !== null);
+}
+
 // Open one box from the home screen, and shrink it back with the button.
 function openApp(id) {
   currentId = id;
@@ -1554,6 +1603,21 @@ boot();
 const startMsg = document.getElementById('startMsg');
 document.getElementById('startBlue').onclick = () => startVoice(document.getElementById('startBlue'), startMsg, s => handleHomeText(s, 'job', startMsg));
 document.getElementById('startGreen').onclick = () => startVoice(document.getElementById('startGreen'), startMsg, s => handleHomeText(s, 'income', startMsg));
+// Purple mic: say a name and a new card (box) with that name is opened. Without voice, type the name instead.
+function addBoxByName(name) {
+  name = String(name || '').trim().replace(/[.!?,]+$/, '');
+  if (!name) { startMsg.textContent = T().cantHear; return; }
+  boxes.push({ id: 'b' + Date.now(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
+  rememberName(name);
+  saveBoxes();
+  renderHome();
+  renderSummaries();
+  startMsg.textContent = T().newCardAdded + name;
+}
+document.getElementById('startPurple').onclick = () => {
+  if (!dictation && !SR) { openNameDialog('', addBoxByName); return; }
+  startVoice(document.getElementById('startPurple'), startMsg, addBoxByName);
+};
 // The button under the mics opens the page with the small boxes.
 document.getElementById('enterBtn').onclick = () => { document.getElementById('startPage').style.display = 'none'; closeApp(); document.getElementById('toFront').style.display = 'block'; };
 document.getElementById('toFront').onclick = () => {

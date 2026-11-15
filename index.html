@@ -146,6 +146,8 @@
   /* Job summary: name, job spending, left (no income column); click a name to see its spending */
   #jobSummaryList .periodRow { grid-template-columns: 1.4fr 1fr 1fr; }
   #jobSummaryList .clickRow { cursor: pointer; }
+  .foldTitle { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+  .foldTitle .foldSum { font-weight: normal; opacity: 0.85; direction: ltr; }
   #jobSummaryList .clickRow:hover { background: #fff3e0; }
   #jobSummaryList .clickRow .period { color: #b45f06; }
   .periodDetail { background: #fff8ef; border-bottom: 1px solid #eee; padding: 4px 10px 6px 10px; font-size: 14px; }
@@ -214,12 +216,29 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 .startMic.listening { box-shadow: 0 0 0 14px rgba(224,69,123,0.45); }
 .enterBtn { padding: 12px 40px; font-size: 22px; font-weight: bold; border: none; border-radius: 26px; background: #4a6cf7; color: white; cursor: pointer; }
 #startPage { gap: 22px; }
+.enterBtn { width: 270px; max-width: 80vw; }
+.personalBtn { width: 180px; max-width: 54vw; margin-top: -10px; padding: 9px 12px; font-size: 18px; font-weight: bold; border: none; border-radius: 22px; background: #2a6df4; color: white; cursor: pointer; }
+/* Personal page */
+#personalPage { width: 100%; max-width: 620px; margin: 0 auto; padding-top: 6px; }
+#personalPage h1 { color: #2a6df4; }
+#personalList { background: white; border: 2px solid #2a6df4; border-radius: 12px; padding: 8px; }
+.perLine { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 8px; align-items: center; padding: 5px 4px; border-bottom: 1px solid #eee; font-size: 15px; }
+.perLine .perDate { color: #888; font-size: 13px; }
+.perLine .perNote { min-width: 0; overflow-wrap: anywhere; }
+.perLine strong { direction: ltr; white-space: nowrap; }
+.perTotal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; background: #dfeaff; border-bottom: 2px solid #2a6df4; padding: 5px 4px; font-size: 14px; font-weight: bold; margin-bottom: 6px; }
+.perTotal span { display: block; font-size: 12px; color: #555; font-weight: normal; }
 #startMsg { max-width: 90vw; }
 /* Website: loading screen and the question boxes that replace the browser's own pop-ups */
 #loadingPage { display: flex; justify-content: center; align-items: center; min-height: 80vh; font-size: 20px; color: #555; text-align: center; flex-direction: column; gap: 14px; }
 #loadingPage button { padding: 9px 18px; font-size: 15px; border: none; border-radius: 8px; background: #4a6cf7; color: white; cursor: pointer; }
 #askOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 60; align-items: center; justify-content: center; }
 #askOverlay.show { display: flex; }
+#pickOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 60; align-items: center; justify-content: center; }
+#pickOverlay.show { display: flex; }
+#pickText { white-space: pre-wrap; text-align: center; font-size: 16px; margin: 0; }
+#pickList button { width: 100%; padding: 10px; font-size: 17px; border: 1px solid #4a6cf7; border-radius: 8px; background: #f4f6ff; cursor: pointer; text-align: center; }
+#pickList button.pickPersonal { background: #2a6df4; color: white; border-color: #2a6df4; font-weight: bold; }
 #askText { white-space: pre-wrap; text-align: center; font-size: 16px; margin: 0; }
 #syncMsg { position: fixed; bottom: 8px; left: 8px; right: 8px; text-align: center; font-size: 14px; color: white; background: crimson; border-radius: 8px; padding: 6px; display: none; z-index: 70; }
 </style>
@@ -228,6 +247,13 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 
 <div id="loadingPage">Loading... / טוען...</div>
 <div id="syncMsg"></div>
+<div id="pickOverlay">
+  <div class="nameDialog">
+    <p id="pickText"></p>
+    <div class="savedList" id="pickList"></div>
+    <div class="dialogButtons"><button class="cancelBtn" id="pickCancel"></button></div>
+  </div>
+</div>
 <div id="askOverlay">
   <div class="nameDialog">
     <p id="askText"></p>
@@ -246,7 +272,18 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
     <button class="startMic green" id="startGreen"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startIncome"></span></button>
   </div>
   <button class="startMic purple" id="startPurple"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startNewCard"></span></button>
-  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button></div>
+  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button><button class="personalBtn" id="personalBtn"><span data-t="personalBtn"></span> &#127908;</button></div>
+<!-- Personal page: what was said with "אישי" on the red and green mics -->
+<div id="personalPage" style="display:none">
+  <h1 data-t="personalPageTitle"></h1>
+  <div class="cards" id="personalCards"></div>
+  <div class="viewTabs">
+    <button id="perDayBtn" class="viewTab" onclick="setPersonalView('day')" data-t="daily"></button>
+    <button id="perWeekBtn" class="viewTab active" onclick="setPersonalView('week')" data-t="weekly"></button>
+    <button id="perMonthBtn" class="viewTab" onclick="setPersonalView('month')" data-t="monthly"></button>
+  </div>
+  <div id="personalList"></div>
+</div>
 <button id="toFront" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10">&#127908;</button>
 <!-- The small boxes are made by the script below. -->
 <div id="homeRow">
@@ -362,7 +399,7 @@ const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
-const written = { meta: null, boxes: {} }; // what the database holds (as JSON text)
+const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
 let syncTimer = null, syncing = false, syncAgain = false;
 let dictation = null;                    // claude.ai speech-to-text, when this browser has it
 
@@ -397,7 +434,10 @@ async function cloudLoad() {
   }
   const meta = db.doc('app/meta');
   const boxesCol = meta.collection('boxes');
-  const snaps = await withTimeout(Promise.all([meta.get(), boxesCol.get()]), 20000);
+  const personalDoc = db.doc('app/personal'); // personal money, said with "אישי"
+  const snaps = await withTimeout(Promise.all([meta.get(), boxesCol.get(), personalDoc.get()]), 20000);
+  const p = snaps[2].exists ? snaps[2].data() : null;
+  const personalJson = p && typeof p.list === 'string' ? p.list : null;
   const m = snaps[0].exists ? snaps[0].data() : {};
   const byId = {};
   const fresh = {};
@@ -408,9 +448,11 @@ async function cloudLoad() {
   Object.keys(LS_MEM).forEach(k => delete LS_MEM[k]);
   META_KEYS.forEach(k => { if (typeof m[k] === 'string') LS_MEM[k] = m[k]; });
   if (list.length) LS_MEM.money_boxes = JSON.stringify(list);
+  if (personalJson) LS_MEM.money_personal = personalJson;
   written.boxes = fresh;
   written.meta = snaps[0].exists ? JSON.stringify(metaFromMem()) : null;
-  cloud = { meta: meta, boxesCol: boxesCol };
+  written.personal = personalJson;
+  cloud = { meta: meta, boxesCol: boxesCol, personal: personalDoc };
 }
 
 function scheduleSync() {
@@ -444,6 +486,8 @@ async function syncNow() {
     }
     const m = JSON.stringify(metaFromMem());
     if (written.meta !== m) { await cloud.meta.set(JSON.parse(m)); written.meta = m; }
+    const pl = LS_MEM.money_personal || '[]';
+    if (written.personal !== pl && !(written.personal === null && pl === '[]')) { await cloud.personal.set({ list: pl }); written.personal = pl; }
     showSyncError('');
   } catch (e) {
     showSyncError(T().syncError);
@@ -462,6 +506,7 @@ document.addEventListener('visibilitychange', async () => {
   if (syncing || syncTimer) return;
   lang = LS.getItem('money_lang') || 'he';
   boxes = loadBoxes();
+  personal = loadPersonal();
   if (currentId && !cur()) closeApp();
   applyLang();
 });
@@ -491,8 +536,33 @@ function askText(message, def) { return ask(message, true, def); }
 
 // The microphone: claude.ai speech-to-text, or the browser's own when that is all there is.
 // It stops by itself a moment after you finish talking. Press again to stop sooner.
+// Chrome's own recognition (set to he-IL) is best at Hebrew, so it is tried first. If this page is not
+// allowed to use it (for example inside claude.ai), that is remembered and claude.ai's speech-to-text is used.
+const SR_BLOCKED_KEY = 'mt-browser-speech-blocked';
+function browserSpeechBlocked() { try { return localStorage.getItem(SR_BLOCKED_KEY) === '1'; } catch (e) { return false; } }
+function markBrowserSpeechBlocked() { try { localStorage.setItem(SR_BLOCKED_KEY, '1'); } catch (e) { /* ignore */ } }
+let browserSpeechFailed = false; // also kept for this visit, in case storage is not allowed
+
 function startVoice(btn, msgEl, onText) {
   const t = T();
+  if (SR && !browserSpeechFailed && !browserSpeechBlocked()) {
+    const rec = new SR();
+    rec.lang = t.micLang;
+    let got = false;
+    rec.onstart = () => { btn.classList.add('listening'); msgEl.textContent = t.listening; };
+    rec.onend = () => { btn.classList.remove('listening'); };
+    rec.onerror = e => {
+      btn.classList.remove('listening');
+      const blocked = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].indexOf(e.error) >= 0;
+      if (blocked && dictation) {
+        browserSpeechFailed = true;
+        markBrowserSpeechBlocked();
+        msgEl.textContent = t.pressAgain;
+      } else if (!got) msgEl.textContent = t.cantHear;
+    };
+    rec.onresult = e => { got = true; onText(e.results[0][0].transcript); };
+    try { rec.start(); return; } catch (err) { browserSpeechFailed = true; }
+  }
   if (dictation) {
     if (dictation.active()) { dictation.stop().catch(() => {}); return; }
     let text = '';
@@ -618,14 +688,24 @@ const TEXT = {
     micMany: 'כמה קופסאות מתאימות ל',
     noVoice: 'זיהוי קול לא נתמך בדפדפן הזה. הקלידו מספר ולחצו על חץ.',
     micBlocked: 'אין גישה למיקרופון. אפשרו אותו בתפריט ההרשאות של הדף.',
+    pressAgain: 'לחצו שוב על המיקרופון ודברו.',
+    pickWhere: (heardText, amountText, kindText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - ' + kindText + '\nלאן להוסיף?',
     enterBtn: 'ניהול כספים',
     startExpenses: 'הוצאות',
     startIncome: 'הכנסות',
     startNewCard: 'כרטיס חדש',
     noSpending: 'אין הוצאות עבודה בתקופה הזו.',
+    personalBtn: 'אישי',
+    personalPageTitle: 'אישי',
+    personalIn: 'נכנס',
+    personalOut: 'יצא',
+    personalLeft: 'נשאר',
+    personalInKind: 'הכנסה אישית',
+    personalOutKind: 'הוצאה אישית',
+    personalEmpty: 'עדיין אין רישומים אישיים. במיקרופון האדום או הירוק אמרו סכום ואחריו "אישי", למשל "מאה אישי".',
     newCardBtn: '+ כרטיס חדש',
     newCardAdded: 'נפתח כרטיס חדש: ',
-    startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד". סגול: אמרו שם לכרטיס חדש.',
+    startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד", או סכום ו"אישי". סגול: אמרו שם לכרטיס חדש.',
     syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
     loadError: 'לא הצלחתי לטעון את הנתונים. בדקו את החיבור לאינטרנט.',
     tryAgain: 'נסו שוב',
@@ -720,14 +800,24 @@ const TEXT = {
     micMany: 'More than one box matches',
     noVoice: 'Voice is not supported in this browser. Type a number and press an arrow.',
     micBlocked: 'No access to the microphone. Allow it in the page Permissions menu.',
+    pressAgain: 'Press the mic again and speak.',
+    pickWhere: (heardText, amountText, kindText) => 'I heard: "' + heardText + '"\n' + amountText + ' - ' + kindText + '\nWhere should it go?',
     enterBtn: 'Money management',
     startExpenses: 'Expenses',
     startIncome: 'Income',
     startNewCard: 'New card',
     noSpending: 'No job spending in this period.',
+    personalBtn: 'Personal',
+    personalPageTitle: 'Personal',
+    personalIn: 'In',
+    personalOut: 'Out',
+    personalLeft: 'Left',
+    personalInKind: 'personal income',
+    personalOutKind: 'personal spending',
+    personalEmpty: 'No personal entries yet. On the red or green mic, say an amount and then "personal", for example "100 personal".',
     newCardBtn: '+ New card',
     newCardAdded: 'New card opened: ',
-    startHint: 'Red and green: say an amount and a name, for example "100 David". Purple: say a name for a new card.',
+    startHint: 'Red and green: say an amount and a name, for example "100 David", or an amount and "personal". Purple: say a name for a new card.',
     syncError: 'Saving did not work. Check your internet connection, trying again...',
     loadError: 'Could not load your data. Check your internet connection.',
     tryAgain: 'Try again',
@@ -801,9 +891,123 @@ function toggleLang() {
 // ---- Weekly and monthly summaries (weeks start on Sunday, months are calendar months) ----
 let jobView = 'week';
 const openSummaryRows = new Set(); // names clicked open in the job summary ("view|period|box")
+const periodFolds = new Map();      // date bars opened or closed by a click ("view|period" -> open)
 let personalView = 'week';
 function setJobView(v) { jobView = v; renderSummaries(); }
-function setPersonalView(v) { personalView = v; renderSummaries(); }
+function setPersonalView(v) { personalView = v; renderPersonalPage(); }
+
+// ---- Personal: amounts said with "אישי" (or "personal") on the red and green mics ----
+// The speech service sometimes writes "אישי" in Arabic or English letters, so those spellings count too.
+// "פרטי" (private) also works, as a word that is harder to mishear.
+const PERSONAL_WORDS = [
+  /^ו?[לב]?ה?אישי(ת|ים)?$/, /^ו?[לב]?ה?פרטי(ת)?$/, /^ו?ל?עישי$/,
+  /^(personal|private|ishi|ishy|ishe|ishee|eeshi|eshi|ichi|ishi\.)$/,
+  // "פרטי" heard as English or Arabic letters
+  /^(party|parti|partie|prati|pratti|praty|pratty|pratie|preti|frati|parati|parity)$/,
+  /^(و?ل?)?(ب|ف|پ)ا?(ر|ل)(ت|ط)(ي|ى|ی)$/,
+  /^(و?ل?)?[اإأآ][يى]?ش[يى]$/, /^(و?ل?)?[اإأآ]يش[يىه]$/, /^(و?ل?)?عيش[يى]$/
+];
+function saysPersonal(sentence) {
+  const words = String(sentence || '').toLowerCase().replace(/[.,!?;:"'()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
+  return words.some(w => PERSONAL_WORDS.some(re => re.test(w)));
+}
+function addPersonalEntry(kind, amount, note) {
+  const now = new Date();
+  personal.unshift({ id: 'p' + Date.now(), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) });
+  savePersonal();
+  renderPersonalPage();
+}
+function openPersonalPage() {
+  document.getElementById('startPage').style.display = 'none';
+  document.getElementById('personalPage').style.display = 'block';
+  document.getElementById('toFront').style.display = 'block';
+  renderPersonalPage();
+}
+// Totals on top, then each day / week / month: its items and a total line (in, out, left).
+function renderPersonalPage() {
+  const t = T();
+  document.getElementById('perDayBtn').classList.toggle('active', personalView === 'day');
+  document.getElementById('perWeekBtn').classList.toggle('active', personalView === 'week');
+  document.getElementById('perMonthBtn').classList.toggle('active', personalView === 'month');
+  const sum = list => {
+    const s = { income: 0, out: 0 };
+    list.forEach(p => { if (p.kind === 'income') s.income += p.amount; else s.out += p.amount; });
+    return s;
+  };
+  const all = sum(personal);
+  const cards = document.getElementById('personalCards');
+  cards.innerHTML = '';
+  [[t.personalIn, all.income, 'income'], [t.personalOut, all.out, 'personal'], [t.personalLeft, all.income - all.out, 'blueColor']].forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const h = document.createElement('h3');
+    h.textContent = c[0];
+    const v = document.createElement('div');
+    v.className = 'total ' + c[2];
+    v.textContent = c[1].toFixed(2);
+    card.append(h, v);
+    cards.appendChild(card);
+  });
+  const box = document.getElementById('personalList');
+  box.innerHTML = '';
+  if (personal.length === 0) { box.appendChild(cell(t.personalEmpty, 'savedTitle')); return; }
+  const periods = {};
+  personal.forEach(p => {
+    const d = entryDate(p);
+    if (!d) return;
+    const k = periodKey(d, personalView);
+    (periods[k] = periods[k] || []).push(p);
+  });
+  Object.keys(periods).sort().reverse().forEach((k, idx) => {
+    // Same as the job summary: only the newest date bar is open until you click.
+    const foldKey = 'personal|' + personalView + '|' + k;
+    const open = periodFolds.has(foldKey) ? periodFolds.get(foldKey) : idx === 0;
+    const ps = sum(periods[k]);
+    const title = document.createElement('div');
+    title.className = 'periodTitle foldTitle';
+    title.append(cell((open ? '▾ ' : '▸ ') + periodLabel(k, personalView)), cell('+' + ps.income.toFixed(2) + '  -' + ps.out.toFixed(2), 'foldSum'));
+    title.onclick = () => { periodFolds.set(foldKey, !open); renderPersonalPage(); };
+    box.appendChild(title);
+    if (!open) return;
+    periods[k].slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(p => {
+      const line = document.createElement('div');
+      line.className = 'perLine';
+      const amt = document.createElement('strong');
+      amt.className = p.kind === 'income' ? 'income' : 'personal';
+      amt.textContent = (p.kind === 'income' ? '+' : '-') + p.amount.toFixed(2);
+      const edit = document.createElement('button');
+      edit.className = 'edit';
+      edit.title = t.editTitle;
+      edit.textContent = '✎';
+      edit.onclick = async () => {
+        const answer = await askText(T().editPrompt + p.amount.toFixed(2) + '):', p.amount);
+        if (answer === null) return;
+        const fixed = findAmount(answer);
+        if (fixed === null) return;
+        p.amount = fixed;
+        savePersonal();
+        renderPersonalPage();
+      };
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = 'X';
+      del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
+      line.append(cell(p.date || '', 'perDate'), cell(p.note || '', 'perNote'), amt, edit, del);
+      box.appendChild(line);
+    });
+    const s = sum(periods[k]);
+    const total = document.createElement('div');
+    total.className = 'perTotal';
+    [[t.personalIn, s.income], [t.personalOut, s.out], [t.personalLeft, s.income - s.out]].forEach(c => {
+      const d = document.createElement('div');
+      const label = document.createElement('span');
+      label.textContent = c[0];
+      d.append(label, document.createTextNode(c[1].toFixed(2)));
+      total.appendChild(d);
+    });
+    box.appendChild(total);
+  });
+}
 
 // Turns an entry's day into a real date. New entries have a sortable day; old ones had local date text.
 function entryDate(e) {
@@ -873,11 +1077,17 @@ function renderSummaries() {
     head.className = 'periodRow head';
     head.append(cell(''), cell(t.colJob), cell(t.colLeft));
     jobBox.appendChild(head);
-    jobKeys.forEach(k => {
+    jobKeys.forEach((k, idx) => {
+      // Each black date bar folds; only the newest is open until you click.
+      const foldKey = jobView + '|' + k;
+      const open = periodFolds.has(foldKey) ? periodFolds.get(foldKey) : idx === 0;
       const title = document.createElement('div');
-      title.className = 'periodTitle';
-      title.textContent = periodLabel(k, jobView);
+      title.className = 'periodTitle foldTitle';
+      const periodJob = Object.keys(jobPeriods[k]).reduce((s, id) => s + jobPeriods[k][id].job, 0);
+      title.append(cell((open ? '▾ ' : '▸ ') + periodLabel(k, jobView)), cell(periodJob.toFixed(2), 'foldSum'));
+      title.onclick = () => { periodFolds.set(foldKey, !open); renderSummaries(); };
       jobBox.appendChild(title);
+      if (!open) return;
       let totalIncome = 0, totalJob = 0;
       Object.keys(jobPeriods[k]).forEach(id => {
         const r = jobPeriods[k][id];
@@ -970,8 +1180,7 @@ function renderSummaries() {
 function loadPersonal() {
   try { const list = JSON.parse(LS.getItem('money_personal') || '[]'); return Array.isArray(list) ? list : []; } catch (e) { return []; }
 }
-LS.removeItem('money_personal'); // the personal spending was deleted
-let personal = [];
+let personal = []; // loaded in boot(); amounts said with "אישי" on the red/green mics
 function savePersonal() { LS.setItem('money_personal', JSON.stringify(personal)); }
 function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function addPersonal() {
@@ -987,6 +1196,7 @@ function addPersonal() {
 }
 if (document.getElementById('pInput')) document.getElementById('pInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPersonal(); });
 function renderPersonal() {
+  if (booted) renderPersonalPage();
   if (!document.getElementById('pDays')) return;
   const days = {};
   personal.forEach((p, i) => { (days[p.day] = days[p.day] || []).push({ p: p, i: i }); });
@@ -1287,19 +1497,28 @@ const NUMBER_WORDS = {
   twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90,
   'אפס':0, 'אחד':1, 'אחת':1, 'שניים':2, 'שתיים':2, 'שתי':2, 'שני':2, 'שלוש':3, 'שלושה':3, 'ארבע':4, 'ארבעה':4,
   'חמש':5, 'חמישה':5, 'שש':6, 'שישה':6, 'שבע':7, 'שבעה':7, 'שמונה':8, 'תשע':9, 'תשעה':9, 'עשר':10, 'עשרה':10,
-  'עשרים':20, 'שלושים':30, 'ארבעים':40, 'חמישים':50, 'שישים':60, 'שבעים':70, 'שמונים':80, 'תשעים':90
+  'עשרים':20, 'שלושים':30, 'ארבעים':40, 'חמישים':50, 'שישים':60, 'שבעים':70, 'שמונים':80, 'תשעים':90,
+  // When the speech service writes Hebrew as Arabic, the numbers can come back as Arabic words.
+  'واحد':1, 'اثنين':2, 'ثلاثة':3, 'ثلاث':3, 'اربعة':4, 'أربعة':4, 'اربع':4, 'خمسة':5, 'خمس':5, 'ستة':6, 'سبعة':7, 'ثمانية':8, 'تسعة':9, 'عشرة':10,
+  'عشرين':20, 'ثلاثين':30, 'اربعين':40, 'أربعين':40, 'خمسين':50, 'ستين':60, 'سبعين':70, 'ثمانين':80, 'تسعين':90, 'مئتين':200, 'ميتين':200
 };
+const HUNDRED_WORDS = ['hundred', 'מאה', 'מאות', 'مئة', 'مائة', 'مية', 'ميه', 'مئات'];
+const THOUSAND_WORDS = ['thousand', 'אלף', 'אלפים', 'الف', 'ألف', 'آلاف', 'الاف'];
 
 // Finds the number in what you said or typed: digits first, then number words.
 function findAmount(sentence) {
+  // Digits written the Arabic way (١٢٣ or ۱۲۳) are turned into 123 first.
+  sentence = String(sentence || '').replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0));
   const match = sentence.match(/(\d+(?:[.,]\d+)?)/);
   if (match) return parseFloat(match[1].replace(',', '.'));
   const words = sentence.toLowerCase().replace(/[-,.]/g, ' ').split(/\s+/);
   let total = 0, found = false, current = 0;
   for (const w of words) {
     const word = w.replace(/^ו/, '');
-    if (w === 'hundred' || w === 'מאה' || w === 'מאות') { current = (current || 1) * 100; found = true; continue; }
-    if (w === 'thousand' || w === 'אלף' || w === 'אלפים') { total += (current || 1) * 1000; current = 0; found = true; continue; }
+    const plain = w.replace(/^و/, '');
+    if (HUNDRED_WORDS.indexOf(w) >= 0 || HUNDRED_WORDS.indexOf(plain) >= 0) { current = (current || 1) * 100; found = true; continue; }
+    if (THOUSAND_WORDS.indexOf(w) >= 0 || THOUSAND_WORDS.indexOf(plain) >= 0) { total += (current || 1) * 1000; current = 0; found = true; continue; }
+    if (plain !== w && plain in NUMBER_WORDS) { current += NUMBER_WORDS[plain]; found = true; continue; }
     if (w in NUMBER_WORDS) { current += NUMBER_WORDS[w]; found = true; }
     else if (word in NUMBER_WORDS && word !== w) { current += NUMBER_WORDS[word]; found = true; }
   }
@@ -1620,6 +1839,44 @@ function soundKey(text) {
   s = s.replace(/ch/g, 'h').replace(/kh/g, 'h').replace(/ph/g, 'p').replace(/c/g, 'k').replace(/q/g, 'k').replace(/w/g, 'v').replace(/x/g, 'ks').replace(/j/g, 'g').replace(/[aeiouy]/g, '').replace(/[^a-z]/g, '');
   return s.replace(/(.)\1+/g, '$1');
 }
+// The "where should this go?" window: personal first, then every open card.
+function chooseTarget(sentence, amount, kind, msg) {
+  const t = T();
+  const ov = document.getElementById('pickOverlay');
+  const list = document.getElementById('pickList');
+  const kindText = kind === 'income' ? t.kinds.income : t.kinds.job;
+  document.getElementById('pickText').textContent = t.pickWhere(sentence, amount.toFixed(2), kindText);
+  list.innerHTML = '';
+  const close = () => ov.classList.remove('show');
+  const personalBtn = document.createElement('button');
+  personalBtn.className = 'pickPersonal';
+  personalBtn.textContent = t.personalBtn;
+  personalBtn.onclick = () => {
+    close();
+    addPersonalEntry(kind, amount, sentence);
+    msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind);
+  };
+  list.appendChild(personalBtn);
+  boxes.forEach((b, i) => {
+    if (b.finished) return;
+    const btn = document.createElement('button');
+    btn.textContent = boxLabel(b, i);
+    btn.onclick = () => {
+      close();
+      b.entries.unshift({ kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+      saveBoxes();
+      renderHome();
+      renderSummaries();
+      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + ' (' + boxLabel(b, i) + ')';
+    };
+    list.appendChild(btn);
+  });
+  const cancel = document.getElementById('pickCancel');
+  cancel.textContent = t.cancelBtn;
+  cancel.onclick = () => { close(); msg.textContent = t.heardWord + ' "' + sentence + '"'; };
+  ov.classList.add('show');
+}
+
 // kind: 'job' (home mic and red start mic) or 'income' (green start mic).
 function handleHomeText(sentence, kind, msgEl) {
   kind = kind || 'job';
@@ -1627,6 +1884,12 @@ function handleHomeText(sentence, kind, msgEl) {
   sentence = (sentence || '').trim();
   const amount = findAmount(sentence);
   if (amount === null) { msg.textContent = T().heardWord + ' "' + sentence + '" ' + T().noAmount; return; }
+  // An amount followed by "אישי" goes to the personal record instead of a card.
+  if (saysPersonal(sentence)) {
+    addPersonalEntry(kind, amount, sentence);
+    msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind);
+    return;
+  }
   // Take the number away and keep the rest as the name.
   let rest = sentence.replace(/\d+(?:[.,]\d+)?/g, ' ').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ');
   rest = rest.split(/\s+/).filter(w => w && !(w.replace(/^ו/, '') in NUMBER_WORDS) && !(w in NUMBER_WORDS) && w !== 'hundred' && w !== 'thousand' && w !== 'מאה' && w !== 'מאות' && w !== 'אלף' && w !== 'אלפים' && w !== 'to' && w !== 'for' && w !== 'את' && w !== 'ל').join(' ').trim();
@@ -1634,16 +1897,16 @@ function handleHomeText(sentence, kind, msgEl) {
   let match = null;
   if (rest) {
     const exact = active.filter(x => boxLabel(x.b, x.i).toLowerCase() === rest);
-    const part = active.filter(x => { const n = boxLabel(x.b, x.i).toLowerCase(); return n.includes(rest) || rest.includes(n); });
+    // Very short names or sounds only count when they match exactly, so they don't match every sentence.
+    const part = active.filter(x => { const n = boxLabel(x.b, x.i).toLowerCase(); return (rest.length >= 2 && n.includes(rest)) || (n.length >= 2 && rest.includes(n)); });
     const rk = soundKey(rest);
-    const alike = rk ? active.filter(x => { const nk = soundKey(boxLabel(x.b, x.i)); return nk && (nk === rk || nk.includes(rk) || rk.includes(nk)); }) : [];
+    const alike = rk ? active.filter(x => { const nk = soundKey(boxLabel(x.b, x.i)); return nk && (nk === rk || (rk.length >= 2 && nk.includes(rk)) || (nk.length >= 2 && rk.includes(nk))); }) : [];
     if (exact.length === 1) match = exact[0];
     else if (part.length === 1) match = part[0];
     else if (part.length === 0 && alike.length === 1) match = alike[0];
-    else if (part.length === 0 && alike.length > 1) { msg.textContent = T().micMany + ' "' + rest + '"'; return; }
-    else if (part.length > 1) { msg.textContent = T().micMany + ' "' + rest + '"'; return; }
   }
-  if (!match) { msg.textContent = T().heardWord + ' "' + sentence + '" - ' + T().micNotFound; return; }
+  // Amount heard but not where it goes (or more than one card fits): ask with buttons.
+  if (!match) { chooseTarget(sentence, amount, kind, msg); return; }
   match.b.entries.unshift({ kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
   saveBoxes();
   renderHome();
@@ -1673,6 +1936,7 @@ async function boot() {
   booted = true;
   lang = LS.getItem('money_lang') || 'he';
   boxes = loadBoxes();
+  personal = loadPersonal();
   loading.style.display = 'none';
   applyLang();
   closeApp(); // always start on the home screen with the small boxes
@@ -1701,12 +1965,14 @@ document.getElementById('startPurple').onclick = () => {
   if (!dictation && !SR) { openNameDialog('', addBoxByName); return; }
   startVoice(document.getElementById('startPurple'), startMsg, addBoxByName);
 };
+// The "אישי" bar opens the personal page.
+document.getElementById('personalBtn').onclick = openPersonalPage;
 // The button under the mics opens the page with the small boxes.
 document.getElementById('enterBtn').onclick = () => { document.getElementById('startPage').style.display = 'none'; closeApp(); document.getElementById('toFront').style.display = 'block'; };
 // The corner button goes back one page: from inside a box to the small boxes, from there to the first page.
 document.getElementById('toFront').onclick = () => {
   if (currentId) { closeApp(); return; }
-  ['homeRow', 'middleArea', 'fileBar', 'app'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  ['homeRow', 'middleArea', 'fileBar', 'app', 'personalPage'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('toFront').style.display = 'none';
   document.getElementById('startPage').style.display = 'flex';
   document.getElementById('startMsg').textContent = T().startHint;

@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Money Tracker</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; max-width: 100vw; }
+  body { font-family: Arial, sans-serif; background: #f4f4f8; padding: 8px clamp(8px, 4vw, 60px); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; width: 100%; }
+  body > * { min-width: 0; max-width: 100%; }
+  h1 { text-align: center; font-size: 20px; margin: 2px 0 8px 0; }
+  .income { color: green; }
+  .job { color: #d97706; }
+  .personal { color: crimson; }
+  .langBtn { position: fixed; top: 8px; left: 8px; padding: 3px 8px; font-size: 16px; border: none; border-radius: 8px; background: #333; color: white; cursor: pointer; z-index: 10; }
+  .page { flex: 1; min-height: 0; display: flex; }
+  .leftSide { width: 100%; flex: 1; min-width: 0; overflow-y: auto; }
+  .top { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  button.bigMic { width: 64px; height: 64px; border-radius: 32px; border: none; background: #4a6cf7; color: white; font-size: 28px; cursor: pointer; flex-shrink: 0; }
+  button.bigMic.listening { background: #e0457b; }
+  .typeArea { width: 100%; min-width: 0; }
+  .typeRow { display: flex; gap: 6px; justify-content: center; }
+  .typeRow input { flex: 0 0 225px; width: 225px; min-width: 0; padding: 8px; font-size: 16px; border: 1px solid #bbb; border-radius: 8px; }
+  .typeRow button { padding: 6px 12px; font-size: 20px; border: none; border-radius: 8px; color: white; cursor: pointer; }
+  .typeRow button.arrowJob { background: crimson; }
+  .arrowKey { font-size: 13px; color: #666; margin-top: 3px; text-align: center; }
+  .heard { color: #333; min-height: 18px; margin: 6px 0; font-size: 15px; text-align: center; }
+  .col { border-radius: 12px; padding: 8px; margin-bottom: 8px; }
+  .col.in { background: #e5f4e4; border: 2px solid green; }
+  .col h2 { margin: 0 0 6px 0; font-size: 15px; text-align: center; }
+  .bar { background: white; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; text-align: center; }
+  .bar h3 { margin: 0; font-size: 14px; color: #555; font-weight: normal; }
+  .bar .total { font-size: 20px; font-weight: bold; }
+  .incomeRow { display: flex; gap: 8px; margin-bottom: 6px; }
+  .incomeRow .bar { flex: 1; margin-bottom: 0; }
+  .incomeRow .jobBar { background: #fbebeb; border: 2px solid crimson; flex: 0 0 calc(50% - 4px); align-self: flex-end; }
+  .jobHistory { flex: 1; min-width: 0; background: #f4fbf3; border-radius: 8px; padding: 6px; }
+  .jobHistory h3 { margin: 0 0 4px 0; font-size: 14px; color: #555; font-weight: normal; text-align: center; }
+  .jobList li { font-size: 16px; padding: 4px 6px; }
+  .afterJobBox { background: white; padding: 6px 8px; border-radius: 8px; margin-bottom: 8px; text-align: center; width: calc(50% - 4px); }
+  .afterJobBox h3 { margin: 0; font-size: 14px; color: #555; font-weight: normal; }
+  .afterJobBox .total { font-size: 20px; font-weight: bold; }
+  .incomeRow .tenBar { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .tenBar { background: #fff8e1; border: 2px solid #f5b800; padding: 6px 8px; border-radius: 8px; text-align: center; }
+  .tenBar h3 { margin: 0; font-size: 14px; color: #555; font-weight: normal; }
+  .tenBar .amount { font-size: 20px; font-weight: bold; color: #b38600; }
+  .tenBar input { width: 52px; padding: 2px 4px; font-size: 15px; border: 1px solid #b38600; border-radius: 6px; text-align: center; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; align-items: center; gap: 8px; background: white; padding: 6px 8px; margin-bottom: 4px; border-radius: 6px; font-size: 17px; }
+  li span.note { flex: 1; }
+  .tag { font-size: 16px; color: #666; }
+  button.del { padding: 3px 8px; border: none; border-radius: 6px; background: #999; color: white; cursor: pointer; }
+  button.edit { padding: 3px 8px; border: none; border-radius: 6px; background: #4a6cf7; color: white; cursor: pointer; }
+  .incomeAdd { display: flex; gap: 4px; margin-top: 6px; }
+  .incomeAdd input { flex: 1; min-width: 0; padding: 5px; font-size: 16px; border: 1px solid #bbb; border-radius: 6px; }
+  .incomeAdd button { padding: 4px 10px; font-size: 16px; border: none; border-radius: 6px; background: green; color: white; cursor: pointer; }
+  .belowRow { display: flex; direction: ltr; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .backupBelow { display: flex; flex-direction: column; gap: 4px; }
+  .backupBelow button { white-space: nowrap; }
+  .belowRow .afterJobBox { margin-bottom: 0; }
+  .backupBtn { padding: 4px 8px; font-size: 13px; border: none; border-radius: 8px; background: #4a6cf7; color: white; cursor: pointer; }
+  .restoreBtn { padding: 4px 8px; font-size: 13px; border: none; border-radius: 8px; background: #666; color: white; cursor: pointer; }
+  .incomeList { margin-top: 6px; text-align: start; }
+  .incomeList li { font-size: 16px; padding: 4px 6px; }
+  /* Home screen with small square boxes. */
+  #home { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; align-content: flex-start; padding: 20px 0; overflow-x: hidden; overflow-y: auto; }
+  .tile { position: relative; flex: 0 0 auto; width: 150px; height: 140px; border-radius: 16px; background: white; border: 3px solid #4a6cf7; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; }
+  .tile:hover { background: #eef2ff; }
+  .tile .icon { font-size: 40px; }
+  .tile .name { font-size: 17px; font-weight: bold; }
+  .tile .rename { position: absolute; top: 6px; inset-inline-end: 6px; padding: 2px 7px; font-size: 15px; border: none; border-radius: 6px; background: #4a6cf7; color: white; cursor: pointer; }
+  .tile .removeTile { position: absolute; top: 6px; inset-inline-start: 6px; padding: 2px 7px; font-size: 15px; border: none; border-radius: 6px; background: #999; color: white; cursor: pointer; }
+  .tile .small { font-size: 15px; color: #666; }
+  .tile .num { font-size: 22px; font-weight: bold; color: #d97706; }
+  .tile.addTile { border: 3px dashed #4a6cf7; background: #f4f6ff; justify-content: center; }
+  .tile.addTile .plus { font-size: 56px; color: #4a6cf7; line-height: 1; }
+  #app { display: none; flex: 1; min-height: 0; flex-direction: column; width: 100%; max-width: 620px; margin: 0 auto; }
+  #homeRow { display: flex; align-items: flex-start; gap: 24px; direction: ltr; justify-content: space-between; flex: 0 0 auto; width: 100%; max-width: 100%; min-width: 0; max-height: 48vh; overflow: hidden; }
+  #jobSide { flex: 1 1 0; min-width: 0; width: 100%; max-width: 100%; margin-top: 20px; }
+  .sideTitle { margin: 0 0 4px 0; font-size: 16px; text-align: right; color: #d97706; }
+  .homeMicRow { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 4px; }
+  .homeMic { width: 300px; height: 44px; border-radius: 22px; border: none; background: #4a6cf7; color: white; font-size: 22px; cursor: pointer; flex-shrink: 0; }
+  .homeMic.listening { background: #e0457b; }
+  .homeMicLine { display: flex; align-items: center; justify-content: center; gap: 10px; direction: ltr; }
+  .homeAdd { width: 44px; height: 44px; border-radius: 22px; border: 3px dashed #4a6cf7; background: #f4f6ff; color: #4a6cf7; font-size: 26px; line-height: 1; cursor: pointer; flex-shrink: 0; padding: 0; }
+  .homeMicMsg { font-size: 15px; color: #333; min-height: 20px; text-align: center; }
+  #homeRow #home { justify-content: center; padding-top: 8px; padding-bottom: 8px; max-width: 100%; height: 172px; overflow-x: hidden; overflow-y: auto; direction: ltr; }
+  #homeRow > * { direction: inherit; min-width: 0; }
+  #personalArea { flex: 0 0 337px; background: #e7f0ff; border: 2px solid #2a6df4; border-radius: 14px; padding: 12px; margin-top: 20px; max-height: 70vh; display: flex; flex-direction: column; }
+  /* (personal spending styles removed) */
+  #middleArea { flex: 0 0 auto; display: flex; flex-direction: column; overflow: visible; }
+  #summaryRow { display: flex; gap: 16px; direction: ltr; margin: 4px 0 8px 0; align-items: flex-start; flex: 0 1 auto; min-height: 0; }
+  .summaryBox { flex: 1; min-width: 0; background: white; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; direction: inherit; min-height: 0; max-height: 100%; overflow: hidden; }
+  #jobSummary { border: 2px solid #d97706; }
+  #personalSummary { border: 2px solid #2a6df4; }
+  .summaryBox .sideTitle { text-align: center; margin: 0 0 6px 0; }
+  .jobColor { color: #d97706; }
+  .blueColor { color: #2a6df4; }
+  .viewTabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
+  .viewTab { padding: 4px 14px; font-size: 15px; border: 1px solid #999; border-radius: 14px; background: #f1f1f1; cursor: pointer; }
+  .viewTab.active { background: #333; color: white; border-color: #333; }
+  .summaryList { min-height: 0; max-height: 30vh; overflow-y: auto; flex: 0 1 auto; }
+  .periodRow { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 6px; font-size: 15px; padding: 4px 6px; border-bottom: 1px solid #eee; align-items: center; text-align: center; }
+  .periodRow.head { font-weight: bold; color: #555; font-size: 13px; position: sticky; top: 0; background: white; }
+  .periodRow.personalRow { grid-template-columns: 1.6fr 1fr; }
+  .periodRow .period { text-align: start; font-weight: bold; }
+  .periodTitle { background: #333; color: white; border-radius: 6px; padding: 3px 8px; margin: 8px 0 2px 0; font-size: 14px; font-weight: bold; text-align: start; }
+  .periodRow.totalRow { background: #fff3cf; font-weight: bold; border-bottom: 2px solid #d9a400; }
+  .periodRow.personalRow.totalRow { background: #dfeaff; border-bottom: 2px solid #2a6df4; }
+  .finishWrap { display: flex; align-items: center; }
+  .finishBtn { padding: 10px 22px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; background: #7a3db8; color: white; cursor: pointer; }
+  #historyBox { margin: 4px 0 8px 0; background: white; border: 2px solid #7a3db8; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; flex: 0 0 auto; max-height: 28vh; }
+  .historyTitle { color: #7a3db8; text-align: center; margin: 0 0 6px 0; }
+  #historyList { min-height: 0; overflow-y: auto; }
+  .histRow { display: grid; grid-template-columns: auto 1.4fr 1fr 1fr 1fr auto; gap: 6px; align-items: center; font-size: 15px; padding: 5px 6px; border-bottom: 1px solid #eee; text-align: center; cursor: pointer; }
+  .histRow:hover { background: #f5eefc; }
+  .histRow.checked { background: #c8f0c8; }
+  .histRow.checked:hover { background: #b6e8b6; }
+  .histRow input[type=checkbox] { width: 20px; height: 20px; cursor: pointer; }
+  .histRow.head { font-weight: bold; color: #555; font-size: 13px; cursor: default; position: sticky; top: 0; background: white; }
+  .histRow.head:hover { background: white; }
+  .histRow .histName { text-align: start; font-weight: bold; }
+  .histRow .histDates { font-size: 13px; color: #777; grid-column: 1 / -1; text-align: start; }
+  .histRow button { padding: 3px 8px; font-size: 13px; border: none; border-radius: 6px; background: #4a6cf7; color: white; cursor: pointer; }
+  #fileBar { display: grid; grid-template-columns: repeat(2, max-content); gap: 8px; justify-content: start; direction: ltr; padding: 4px 0 8px 0; flex-shrink: 0; }
+  .fileBtn { padding: 8px 14px; font-size: 15px; border: none; border-radius: 8px; background: #4a6cf7; color: white; cursor: pointer; }
+  .fileBtn.load { background: #666; }
+  .fileMsg { font-size: 15px; color: #333; grid-column: 1 / span 2; }
+  .tile .opened { font-size: 14px; color: #888; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; max-width: 100%; }
+  .openedLine { text-align: center; font-size: 14px; color: #888; margin: -4px 0 6px 0; }
+  /* The name box that opens on top of the page */
+  #nameOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 50; align-items: center; justify-content: center; }
+  #nameOverlay.show { display: flex; }
+  .nameDialog { background: white; border-radius: 16px; padding: 18px; width: 340px; max-width: 92vw; max-height: 85vh; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .nameDialog h3 { margin: 0; font-size: 18px; text-align: center; }
+  .nameDialog input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #bbb; border-radius: 8px; }
+  .nameDialog .savedTitle { font-size: 15px; color: #666; }
+  .nameDialog .savedList { overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 6px; }
+  .savedItem { display: flex; gap: 6px; }
+  .savedItem button.pick { flex: 1; padding: 9px; font-size: 16px; text-align: start; border: 1px solid #4a6cf7; border-radius: 8px; background: #f4f6ff; cursor: pointer; }
+  .savedItem button.pick:hover { background: #e2e8ff; }
+  .savedItem button.forget { padding: 9px 12px; border: none; border-radius: 8px; background: #999; color: white; cursor: pointer; }
+  .dialogButtons { display: flex; gap: 8px; justify-content: center; }
+  .dialogButtons button { padding: 9px 18px; font-size: 15px; border: none; border-radius: 8px; color: white; cursor: pointer; }
+  .dialogButtons .okBtn { background: green; }
+  .dialogButtons .cancelBtn { background: #666; }
+  .titleEdit { padding: 2px 8px; font-size: 16px; border: none; border-radius: 6px; background: #4a6cf7; color: white; cursor: pointer; vertical-align: middle; }
+  .shrinkBtn { align-self: center; margin-bottom: 6px; padding: 6px 14px; font-size: 16px; border: none; border-radius: 8px; background: #666; color: white; cursor: pointer; }
+.savedTitle { font-size: 15px; color: #666; }
+#startPage { display: none; gap: 30px; justify-content: center; align-items: center; flex-direction: column; min-height: 80vh; direction: ltr; }
+.startMic { width: 230px; height: 230px; border-radius: 115px; border: none; color: white; font-size: 90px; cursor: pointer; }
+.startMic.blue { background: #d32f2f; }
+.startMic.green { background: #2e9e44; }
+.startMic.listening { box-shadow: 0 0 0 14px rgba(224,69,123,0.45); }
+.enterBtn { padding: 12px 40px; font-size: 22px; font-weight: bold; border: none; border-radius: 26px; background: #4a6cf7; color: white; cursor: pointer; }
+#startPage { gap: 22px; }
+#startMsg { max-width: 90vw; }
+/* Website: loading screen and the question boxes that replace the browser's own pop-ups */
+#loadingPage { display: flex; justify-content: center; align-items: center; min-height: 80vh; font-size: 20px; color: #555; text-align: center; flex-direction: column; gap: 14px; }
+#loadingPage button { padding: 9px 18px; font-size: 15px; border: none; border-radius: 8px; background: #4a6cf7; color: white; cursor: pointer; }
+#askOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 60; align-items: center; justify-content: center; }
+#askOverlay.show { display: flex; }
+#askText { white-space: pre-wrap; text-align: center; font-size: 16px; margin: 0; }
+#syncMsg { position: fixed; bottom: 8px; left: 8px; right: 8px; text-align: center; font-size: 14px; color: white; background: crimson; border-radius: 8px; padding: 6px; display: none; z-index: 70; }
+</style>
+</head>
+<body>
+
+<div id="loadingPage">Loading... / טוען...</div>
+<div id="syncMsg"></div>
+<div id="askOverlay">
+  <div class="nameDialog">
+    <p id="askText"></p>
+    <input type="text" id="askInput">
+    <div class="dialogButtons">
+      <button class="okBtn" id="askOk"></button>
+      <button class="cancelBtn" id="askCancel"></button>
+    </div>
+  </div>
+</div>
+<button class="langBtn" id="langBtn" onclick="toggleLang()">English</button>
+
+<div id="startPage"><button class="startMic blue" id="startBlue">&#127908;</button><button class="startMic green" id="startGreen">&#127908;</button><span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button></div>
+<button id="toFront" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10">&#127908;</button>
+<!-- The small boxes are made by the script below. -->
+<div id="homeRow">
+  <div id="jobSide">
+    <h2 class="sideTitle" style="display:none" data-t="jobTitle"></h2>
+    <div class="homeMicRow"><div class="homeMicLine"><button class="homeMic" id="homeMicBtn" onclick="listenHome()">&#127908;</button><button class="homeAdd" id="homeAddBtn" onclick="addBox()">+</button></div><span class="homeMicMsg" id="homeMicMsg"></span></div>
+    <div id="home"></div>
+  </div>
+</div>
+<div id="middleArea">
+<div id="summaryRow">
+  <div class="summaryBox" id="jobSummary">
+    <h2 class="sideTitle jobColor" data-t="jobSummaryTitle"></h2>
+    <div class="viewTabs">
+      <button id="jobDayBtn" class="viewTab" onclick="setJobView('day')" data-t="daily"></button>
+      <button id="jobWeekBtn" class="viewTab active" onclick="setJobView('week')" data-t="weekly"></button>
+      <button id="jobMonthBtn" class="viewTab" onclick="setJobView('month')" data-t="monthly"></button>
+    </div>
+    <div class="summaryList" id="jobSummaryList"></div>
+  </div>
+</div>
+<div id="historyBox">
+  <h2 class="sideTitle historyTitle" data-t="historyTitle"></h2>
+  <div id="historyList"></div>
+</div>
+</div>
+<div id="fileBar"><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
+  <button class="fileBtn load" onclick="document.getElementById('fileInput').click()" data-t="loadFile"></button>
+  <button class="fileBtn" onclick="backupByEmail()" data-t="backupBtn"></button>
+  <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
+  <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="loadBackupFile(event)">
+  </div><div class="fileMsg" id="fileMsg"></div>
+</div>
+
+<!-- The box that opens to choose or type a name -->
+<div id="nameOverlay" onclick="closeNameDialog(null)">
+  <div class="nameDialog" onclick="event.stopPropagation()">
+    <h3 id="nameDialogTitle"></h3>
+    <input type="text" id="nameInput" maxlength="40">
+    <div class="savedTitle" id="savedTitle"></div>
+    <div class="savedList" id="savedList"></div>
+    <div class="dialogButtons">
+      <button class="okBtn" id="nameOk" onclick="submitNameDialog()"></button>
+      <button class="cancelBtn" id="nameCancel" onclick="closeNameDialog(null)"></button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+<button class="shrinkBtn" onclick="closeApp()" data-t="shrink"></button>
+<h1><span id="pageTitle"></span> <button class="titleEdit" id="titleEdit" onclick="renameOpenBox()">&#9998;</button></h1>
+<div class="openedLine" id="openedLine"></div>
+
+<div class="page">
+  <div class="leftSide">
+    <div class="top">
+      <button class="bigMic" id="micBtn" onclick="listen()">&#127908;</button>
+      <div class="typeArea">
+        <div class="typeRow">
+          <input type="text" id="typed" inputmode="decimal" data-p="typePlaceholder">
+          <button class="arrowJob" id="arrowJob" onclick="addArrow('job')">&#11015;</button>
+        </div>
+        <div class="arrowKey" data-t="arrowKey"></div>
+      </div>
+    </div>
+    <div class="heard" id="heard"></div>
+
+    <div class="col in">
+      <h2 class="income" data-t="incomeTitle"></h2>
+      <div class="incomeRow">
+        <div class="bar">
+          <h3 data-t="moneyIn"></h3>
+          <div class="total income" id="tIncome">0.00</div>
+          <div class="incomeAdd">
+            <input type="text" id="typedIncome" inputmode="decimal" data-p="addPlaceholder">
+            <button class="addIncome" onclick="addIncome()">+</button>
+          </div>
+          <div class="incomeList"><ul id="listIncome"></ul></div>
+        </div>
+        <div class="tenBar">
+          <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
+          <div class="amount" id="tTen">0.00</div>
+        </div>
+      </div>
+      <div class="incomeRow">
+        <div class="jobHistory">
+          <h3 data-t="jobList"></h3>
+          <div class="jobList"><ul id="listJob"></ul></div>
+        </div>
+        <div class="bar jobBar">
+          <h3 data-t="jobSpending"></h3>
+          <div class="total personal" id="tJob">0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="belowRow">
+      <div class="finishWrap">
+        <button class="finishBtn" onclick="finishJob()" data-t="finishBtn"></button>
+      </div>
+      <div class="afterJobBox">
+        <h3 data-t="afterJob"></h3>
+        <div class="total job" id="tAfterJob">0.00</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ===== Website version (claude.ai page) =====
+// The data lives in the page's own database, readable and changeable only by the owner, so the PC and
+// the phone show the same boxes. Layout: app/meta {money_lang, money_names, money_emails, order} and
+// app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
+// localStorage that keeps everything in memory and writes the changes to the database a moment later.
+const LS_MEM = {};
+const META_KEYS = ['money_lang', 'money_names', 'money_emails'];
+let booted = false;
+let cloud = null;                        // database references, or null when there is no database
+const written = { meta: null, boxes: {} }; // what the database holds (as JSON text)
+let syncTimer = null, syncing = false, syncAgain = false;
+let dictation = null;                    // claude.ai speech-to-text, when this browser has it
+
+const LS = {
+  getItem(k) { return Object.prototype.hasOwnProperty.call(LS_MEM, k) ? LS_MEM[k] : null; },
+  setItem(k, v) { LS_MEM[k] = String(v); scheduleSync(); },
+  removeItem(k) { if (k in LS_MEM) { delete LS_MEM[k]; scheduleSync(); } }
+};
+
+function claudeUse(name) {
+  const c = window.claude;
+  if (!c || typeof c.use !== 'function') return Promise.resolve(null);
+  return Promise.resolve(c.use(name)).catch(() => null);
+}
+function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]); }
+
+function metaFromMem() {
+  const m = {};
+  META_KEYS.forEach(k => { if (k in LS_MEM) m[k] = LS_MEM[k]; });
+  let list = []; try { list = JSON.parse(LS_MEM.money_boxes || '[]'); } catch (e) { list = []; }
+  m.order = list.map(b => b.id);
+  return m;
+}
+
+// Reads everything from the database into memory. Throws if the database can't be reached.
+async function cloudLoad() {
+  const db = await claudeUse('db');
+  if (!db) {
+    // Opened outside claude.ai: fall back to this browser's own storage.
+    try { Object.keys(localStorage).forEach(k => { if (k.indexOf('money_') === 0) LS_MEM[k] = localStorage.getItem(k); }); } catch (e) { /* none */ }
+    return;
+  }
+  const meta = db.doc('app/meta');
+  const boxesCol = meta.collection('boxes');
+  const snaps = await withTimeout(Promise.all([meta.get(), boxesCol.get()]), 20000);
+  const m = snaps[0].exists ? snaps[0].data() : {};
+  const byId = {};
+  const fresh = {};
+  snaps[1].docs.forEach(d => { if (d.exists) { byId[d.id] = d.data(); fresh[d.id] = JSON.stringify(d.data()); } });
+  const order = Array.isArray(m.order) ? m.order : [];
+  const list = order.filter(id => byId[id]).map(id => byId[id]);
+  Object.keys(byId).forEach(id => { if (order.indexOf(id) < 0) list.push(byId[id]); });
+  Object.keys(LS_MEM).forEach(k => delete LS_MEM[k]);
+  META_KEYS.forEach(k => { if (typeof m[k] === 'string') LS_MEM[k] = m[k]; });
+  if (list.length) LS_MEM.money_boxes = JSON.stringify(list);
+  written.boxes = fresh;
+  written.meta = snaps[0].exists ? JSON.stringify(metaFromMem()) : null;
+  cloud = { meta: meta, boxesCol: boxesCol };
+}
+
+function scheduleSync() {
+  if (!booted) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncTimer = null; syncNow(); }, 400);
+}
+function showSyncError(text) {
+  const el = document.getElementById('syncMsg');
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+}
+// Writes only what changed: each box that changed, boxes that were deleted, then the names and settings.
+async function syncNow() {
+  if (!cloud) {
+    try { Object.keys(LS_MEM).forEach(k => localStorage.setItem(k, LS_MEM[k])); } catch (e) { /* none */ }
+    return;
+  }
+  if (syncing) { syncAgain = true; return; }
+  syncing = true;
+  try {
+    let list = []; try { list = JSON.parse(LS_MEM.money_boxes || '[]'); } catch (e) { list = []; }
+    const now = {};
+    for (const b of list) {
+      const json = JSON.stringify(b);
+      now[b.id] = true;
+      if (written.boxes[b.id] !== json) { await cloud.boxesCol.doc(b.id).set(JSON.parse(json)); written.boxes[b.id] = json; }
+    }
+    for (const id of Object.keys(written.boxes)) {
+      if (!now[id]) { await cloud.boxesCol.doc(id).delete(); delete written.boxes[id]; }
+    }
+    const m = JSON.stringify(metaFromMem());
+    if (written.meta !== m) { await cloud.meta.set(JSON.parse(m)); written.meta = m; }
+    showSyncError('');
+  } catch (e) {
+    showSyncError(T().syncError);
+    setTimeout(scheduleSync, 5000);
+  } finally {
+    syncing = false;
+    if (syncAgain) { syncAgain = false; scheduleSync(); }
+  }
+}
+
+// When you come back to this tab (for example after adding something on the phone), get the latest data.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !booted || !cloud || syncing || syncTimer) return;
+  if (document.getElementById('nameOverlay').classList.contains('show') || document.getElementById('askOverlay').classList.contains('show')) return;
+  try { await cloudLoad(); } catch (e) { return; }
+  if (syncing || syncTimer) return;
+  lang = LS.getItem('money_lang') || 'he';
+  boxes = loadBoxes();
+  if (currentId && !cur()) closeApp();
+  applyLang();
+});
+
+// Question boxes on the page itself (the browser's own pop-ups are blocked inside claude.ai).
+function ask(message, withInput, def) {
+  return new Promise(resolve => {
+    const ov = document.getElementById('askOverlay');
+    const inp = document.getElementById('askInput');
+    const ok = document.getElementById('askOk');
+    const cancel = document.getElementById('askCancel');
+    document.getElementById('askText').textContent = message;
+    inp.style.display = withInput ? '' : 'none';
+    inp.value = withInput && def !== undefined && def !== null ? String(def) : '';
+    ok.textContent = T().okBtn;
+    cancel.textContent = T().cancelBtn;
+    const finish = v => { ov.classList.remove('show'); ok.onclick = cancel.onclick = inp.onkeydown = null; resolve(v); };
+    ok.onclick = () => finish(withInput ? inp.value : true);
+    cancel.onclick = () => finish(withInput ? null : false);
+    inp.onkeydown = e => { if (e.key === 'Enter') ok.onclick(); if (e.key === 'Escape') cancel.onclick(); };
+    ov.classList.add('show');
+    if (withInput) { inp.focus(); inp.select(); } else ok.focus();
+  });
+}
+function askConfirm(message) { return ask(message, false); }
+function askText(message, def) { return ask(message, true, def); }
+
+// The microphone: claude.ai speech-to-text, or the browser's own when that is all there is.
+// It stops by itself a moment after you finish talking. Press again to stop sooner.
+function startVoice(btn, msgEl, onText) {
+  const t = T();
+  if (dictation) {
+    if (dictation.active()) { dictation.stop().catch(() => {}); return; }
+    let text = '';
+    let timer = null;
+    const offs = [];
+    const stopIn = ms => { clearTimeout(timer); timer = setTimeout(() => dictation.stop().catch(() => {}), ms); };
+    const done = () => { offs.forEach(off => off()); offs.length = 0; clearTimeout(timer); btn.classList.remove('listening'); };
+    const explain = code => {
+      if (code === 'not_granted') msgEl.textContent = t.micBlocked;
+      else if (code === 'unavailable') msgEl.textContent = t.noVoice;
+      else if (code !== 'dismissed' && code !== 'stopped' && code !== 'viewer_stopped' && code !== 'hidden') msgEl.textContent = t.cantHear;
+    };
+    offs.push(dictation.onPartial(e => { if (e.text) { clearTimeout(timer); msgEl.textContent = t.listening + ' "' + e.text + '"'; } }));
+    offs.push(dictation.onFinal(e => { text += e.text; stopIn(1500); }));
+    offs.push(dictation.onState(e => {
+      if (e.state === 'listening') { btn.classList.add('listening'); msgEl.textContent = t.listening; stopIn(8000); }
+      if (e.state !== 'idle') return;
+      done();
+      if (text.trim()) onText(text.trim());
+      else if (e.reason === 'stopped' || e.reason === 'viewer_stopped') msgEl.textContent = t.cantHear;
+      else explain(e.reason);
+    }));
+    // Must start straight from the click.
+    dictation.start({ language: lang }).catch(err => { if (!dictation.active() && offs.length) { done(); explain(err && err.code); } });
+    return;
+  }
+  if (!SR) { msgEl.textContent = t.noVoice; return; }
+  const rec = new SR();
+  rec.lang = t.micLang;
+  rec.onstart = () => { btn.classList.add('listening'); msgEl.textContent = t.listening; };
+  rec.onend = () => { btn.classList.remove('listening'); };
+  rec.onerror = () => { btn.classList.remove('listening'); msgEl.textContent = t.cantHear; };
+  rec.onresult = e => onText(e.results[0][0].transcript);
+  rec.start();
+}
+// ===== End of the website part =====
+
+// Words
+const TEXT = {
+  he: {
+    appName: 'מעקב כספים',
+    bk: 'גיבוי',
+    shrink: '\u27A1 כיווץ לקופסה קטנה',
+    typePlaceholder: 'לחצו והקלידו מספר',
+    addPlaceholder: 'הוסיפו סכום',
+    arrowKey: 'חץ אדום למטה = הוצאות עבודה',
+    hint: 'לחצו על המיקרופון ואמרו מספר, למשל "ארבעים". הוא יתווסף להוצאות עבודה.',
+    incomeTitle: 'הכנסות',
+    moneyIn: 'כסף שנכנס',
+    pctLabel: 'מההכנסה אחרי הוצאות עבודה',
+    jobList: 'רשימת הוצאות עבודה',
+    jobSpending: 'הוצאות עבודה',
+    afterJob: 'הכנסה אחרי הוצאות עבודה',
+    backupBtn: 'גיבוי למייל',
+    restoreBtn: 'שחזור מגיבוי',
+    emailPrompt: 'לאיזה מייל לשלוח את הגיבוי? (כתובות קודמות: ',
+    emailBad: 'זו לא כתובת מייל תקינה.',
+    restorePrompt: 'הדביקו כאן את טקסט הגיבוי מהמייל:',
+    restoreOk: 'הגיבוי שוחזר.',
+    restoreBad: 'הטקסט לא נראה כמו גיבוי. שום דבר לא השתנה.',
+    restoreSure: 'השחזור יחליף את כל הנתונים של הקופסה הזו. להמשיך?',
+    backupSubject: 'גיבוי מעקב כספים',
+    rename: 'שינוי שם',
+    chooseBox: 'לאיזו קופסה? הקלידו את המספר שלה:',
+    finishBtn: 'סיום העבודה',
+    finishSure: 'לסיים את העבודה הזו ולהעביר אותה להיסטוריה?',
+    historyTitle: 'היסטוריה - עבודות שהסתיימו',
+    noHistory: 'עדיין אין עבודות שהסתיימו.',
+    finishedOn: 'הסתיים ב-',
+    reopen: 'החזרה',
+    reopenSure: 'להחזיר את העבודה הזו לעבודות הפעילות?',
+    totalLabel: 'סה"כ',
+    jobSummaryTitle: 'סיכום העבודה',
+    personalSummaryTitle: 'סיכום הוצאות',
+    daily: 'יומי',
+    weekly: 'שבועי',
+    monthly: 'חודשי',
+    colIn: 'הכנסה',
+    colJob: 'הוצאות עבודה',
+    colLeft: 'נשאר',
+    colSpent: 'הוצאתי',
+    noPeriods: 'עדיין אין נתונים.',
+    weekOf: 'שבוע מ-',
+    jobTitle: 'העבודה שלי',
+    personalTitle: 'הוצאות',
+    todayLabel: 'היום:',
+    pPlaceholder: 'הוסיפו סכום שלקחתם',
+    noPersonal: 'עדיין אין הוצאות אישיות.',
+    personalNote: 'הוצאה אישית',
+    saveFile: 'שמירת גיבוי לקובץ',
+    loadFile: 'טעינת גיבוי מקובץ',
+    fileSaved: 'הקובץ נשמר בתיקיית ההורדות.',
+    fileSavedAs: 'הקובץ נשמר: ',
+    saveCancelled: 'השמירה בוטלה.',
+    fileBad: 'הקובץ לא נראה כמו גיבוי של מעקב כספים. שום דבר לא השתנה.',
+    fileResult: 'נטענו {added} קופסאות חדשות. דולגו {skipped} כפולות.',
+    opened: 'נפתח ב-',
+    renamePrompt: 'שם הקופסה',
+    nameTyping: 'הקלידו שם חדש',
+    savedNames: 'שמות שמורים (לחצו לבחירה):',
+    noSaved: 'עדיין אין שמות שמורים.',
+    noMatch: 'אין שם שמור שמתאים. לחצו אישור כדי לשמור שם חדש.',
+    okBtn: 'אישור',
+    cancelBtn: 'ביטול',
+    forgetName: 'מחיקת השם מהרשימה',
+    addBox: 'הוספת קופסה חדשה',
+    removeBox: 'מחיקת הקופסה',
+    removeSure: 'למחוק את הקופסה הזו עם כל הנתונים שלה?',
+    newBoxName: 'קופסה ',
+    editTitle: 'תיקון הסכום',
+    editPrompt: 'תקנו את הסכום (כרגע ',
+    notNumber: 'זה לא מספר, שום דבר לא השתנה.',
+    corrected: 'תוקן ל-',
+    typedNote: 'הוקלד ',
+    typeFirst: 'הקלידו מספר ואז לחצו על החץ.',
+    typeFirstPlus: 'הקלידו מספר ואז לחצו על הפלוס.',
+    addedTo: 'נוסף ',
+    heardWord: 'שמעתי',
+    noAmount: 'אבל לא מצאתי סכום. נסו שוב.',
+    listening: 'מקשיב...',
+    cantHear: 'לא שמעתי. נסו שוב.',
+    micNotFound: 'לא מצאתי קופסה עם השם הזה.',
+    micMany: 'כמה קופסאות מתאימות ל',
+    noVoice: 'זיהוי קול לא נתמך בדפדפן הזה. הקלידו מספר ולחצו על חץ.',
+    micBlocked: 'אין גישה למיקרופון. אפשרו אותו בתפריט ההרשאות של הדף.',
+    enterBtn: 'ניהול כספים',
+    startHint: 'אדום: אמרו סכום ושם, למשל "מאה לדוד" - הוצאות עבודה. ירוק: אותו דבר - כסף שנכנס.',
+    syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
+    loadError: 'לא הצלחתי לטעון את הנתונים. בדקו את החיבור לאינטרנט.',
+    tryAgain: 'נסו שוב',
+    kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
+    micLang: 'he-IL',
+    button: 'EN',
+    dir: 'rtl'
+  },
+  en: {
+    appName: 'Money Tracker',
+    bk: 'Backup',
+    shrink: '\u2B05 Shrink to small box',
+    typePlaceholder: 'Click and type a number',
+    addPlaceholder: 'Add amount',
+    arrowKey: 'Red down arrow = job spending',
+    hint: 'Press the microphone and say a number, for example "forty". It is added to job spending.',
+    incomeTitle: 'Income',
+    moneyIn: 'Money coming in',
+    pctLabel: 'of my money in after job costs',
+    jobList: 'Job spending history',
+    jobSpending: 'Spending on the job',
+    afterJob: 'Money in after job costs',
+    backupBtn: 'Back up by email',
+    restoreBtn: 'Restore from backup',
+    emailPrompt: 'Which email should the backup go to? (earlier addresses: ',
+    emailBad: 'That is not a valid email address.',
+    restorePrompt: 'Paste the backup text from your email here:',
+    restoreOk: 'Backup restored.',
+    restoreBad: 'That text does not look like a backup. Nothing changed.',
+    restoreSure: 'Restoring will replace all the data of this box. Continue?',
+    backupSubject: 'Money tracker backup',
+    rename: 'Change the name',
+    chooseBox: 'Which box? Type its number:',
+    finishBtn: 'Finish',
+    finishSure: 'Finish this job and move it to the history?',
+    historyTitle: 'History - finished jobs',
+    noHistory: 'No finished jobs yet.',
+    finishedOn: 'Finished on ',
+    reopen: 'Reopen',
+    reopenSure: 'Move this job back to the active jobs?',
+    totalLabel: 'Total',
+    jobSummaryTitle: 'Job summary',
+    personalSummaryTitle: 'Spending summary',
+    daily: 'Daily',
+    weekly: 'Weekly',
+    monthly: 'Monthly',
+    colIn: 'Income',
+    colJob: 'Job spending',
+    colLeft: 'Left',
+    colSpent: 'Spent',
+    noPeriods: 'No data yet.',
+    weekOf: 'Week of ',
+    jobTitle: 'My job',
+    personalTitle: 'Spending',
+    todayLabel: 'Today:',
+    pPlaceholder: 'Add an amount you took',
+    noPersonal: 'No personal spending yet.',
+    personalNote: 'Personal spending',
+    saveFile: 'Save backup to a file',
+    loadFile: 'Load backup from a file',
+    fileSaved: 'The file was saved in your Downloads folder.',
+    fileSavedAs: 'The file was saved: ',
+    saveCancelled: 'Saving was cancelled.',
+    fileBad: 'That file does not look like a money tracker backup. Nothing changed.',
+    fileResult: 'Loaded {added} new boxes. Skipped {skipped} doubles.',
+    opened: 'Opened on ',
+    renamePrompt: 'Name of the box',
+    nameTyping: 'Type a new name',
+    savedNames: 'Saved names (click to choose):',
+    noSaved: 'No saved names yet.',
+    noMatch: 'No saved name matches. Press OK to save a new name.',
+    okBtn: 'OK',
+    cancelBtn: 'Cancel',
+    forgetName: 'Remove this name from the list',
+    addBox: 'Add a new box',
+    removeBox: 'Delete this box',
+    removeSure: 'Delete this box with all its data?',
+    newBoxName: 'Box ',
+    editTitle: 'Correct this amount',
+    editPrompt: 'Correct the amount (now ',
+    notNumber: 'That was not a number, nothing changed.',
+    corrected: 'Corrected to ',
+    typedNote: 'Typed ',
+    typeFirst: 'Type a number first, then press an arrow.',
+    typeFirstPlus: 'Type a number first, then press the plus.',
+    addedTo: 'Added ',
+    heardWord: 'I heard',
+    noAmount: 'but found no amount. Try again.',
+    listening: 'Listening...',
+    cantHear: 'I could not hear that. Try again.',
+    micNotFound: 'I did not find a box with that name.',
+    micMany: 'More than one box matches',
+    noVoice: 'Voice is not supported in this browser. Type a number and press an arrow.',
+    micBlocked: 'No access to the microphone. Allow it in the page Permissions menu.',
+    enterBtn: 'Money management',
+    startHint: 'Red: say an amount and a name, for example "100 David" - job spending. Green: the same - money in.',
+    syncError: 'Saving did not work. Check your internet connection, trying again...',
+    loadError: 'Could not load your data. Check your internet connection.',
+    tryAgain: 'Try again',
+    kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
+    micLang: 'en-GB',
+    button: '\u05E2\u05D1',
+    dir: 'ltr'
+  }
+};
+
+// Data
+function loadBoxes() {
+  let boxes = null;
+  try { boxes = JSON.parse(LS.getItem('money_boxes') || 'null'); } catch (e) { boxes = null; }
+  if (!Array.isArray(boxes) || boxes.length === 0) {
+    // First time with boxes: the old single tracker becomes box number 1, nothing is lost.
+    let oldEntries = [];
+    try { oldEntries = JSON.parse(LS.getItem('money_entries_v2') || '[]'); } catch (e) { oldEntries = []; }
+    const oldPct = parseFloat(LS.getItem('money_pct'));
+    boxes = [{
+      id: 'b' + Date.now(),
+      name: LS.getItem('money_app_name') || '',
+      entries: oldEntries,
+      pct: isNaN(oldPct) ? 10 : oldPct,
+      created: new Date().toLocaleDateString()
+    }];
+    LS.setItem('money_boxes', JSON.stringify(boxes));
+  }
+  return boxes;
+}
+
+let lang = 'he';  // set from the saved data once it has loaded (see boot below)
+let boxes = [];
+let currentId = null; // the box that is open, or null on the home screen
+const heard = document.getElementById('heard');
+const listIncome = document.getElementById('listIncome');
+const listJob = document.getElementById('listJob');
+
+function T() { return TEXT[lang]; }
+function saveBoxes() { LS.setItem('money_boxes', JSON.stringify(boxes)); }
+function cur() { return boxes.find(b => b.id === currentId); }
+function boxLabel(b, index) { return b.name || (index === 0 ? T().appName : T().newBoxName + (index + 1)); }
+function boxTotals(b) {
+  const totals = { income: 0, job: 0 };
+  b.entries.forEach(e => { if (e.kind === 'income' || e.kind === 'job') totals[e.kind] += e.amount; });
+  return totals;
+}
+
+// Put the right language on every label.
+function applyLang() {
+  const t = T();
+  document.documentElement.lang = lang;
+  document.documentElement.dir = t.dir;
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t[el.getAttribute('data-t')]; });
+  document.querySelectorAll('[data-p]').forEach(el => { el.placeholder = t[el.getAttribute('data-p')]; });
+  document.getElementById('langBtn').textContent = t.button;
+  document.getElementById('arrowJob').title = t.jobSpending;
+  document.getElementById('titleEdit').title = t.rename;
+  heard.textContent = t.hint;
+  renderHome();
+  renderPersonal();
+  renderSummaries();
+  if (currentId) { showName(); render(); }
+}
+function toggleLang() {
+  lang = (lang === 'he') ? 'en' : 'he';
+  LS.setItem('money_lang', lang);
+  applyLang();
+}
+
+// ---- Weekly and monthly summaries (weeks start on Sunday, months are calendar months) ----
+let jobView = 'week';
+let personalView = 'week';
+function setJobView(v) { jobView = v; renderSummaries(); }
+function setPersonalView(v) { personalView = v; renderSummaries(); }
+
+// Turns an entry's day into a real date. New entries have a sortable day; old ones had local date text.
+function entryDate(e) {
+  if (e.day && /^\d{4}-\d{2}-\d{2}$/.test(e.day)) {
+    const p = e.day.split('-');
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  }
+  if (e.date) {
+    // Old entries saved the date as local text. Try to read it as a day, month and year; skip if unclear.
+    const parts = String(e.date).split(/[\/.\-]/).map(x => parseInt(x, 10));
+    if (parts.length === 3 && parts.every(x => !isNaN(x))) {
+      let d, m, y;
+      if (parts[0] > 31) { y = parts[0]; m = parts[1]; d = parts[2]; }
+      else {
+        y = parts[2]; if (y < 100) y += 2000;
+        // A first number above 12 must be the day (day/month/year). Otherwise use the browser's own order.
+        const dayFirst = parts[0] > 12 || !/^1[0-2]?\/\d/.test(String(e.date)) || navigator.language.indexOf('en-US') !== 0;
+        if (dayFirst) { d = parts[0]; m = parts[1]; } else { m = parts[0]; d = parts[1]; }
+      }
+      const date = new Date(y, m - 1, d);
+      if (!isNaN(date) && date.getMonth() === m - 1) return date;
+    }
+  }
+  return null;
+}
+function weekStart(d) { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); s.setDate(s.getDate() - s.getDay()); return s; }
+function periodKey(d, view) {
+  if (view === 'day') return dayKey(d);
+  if (view === 'month') return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const s = weekStart(d);
+  return dayKey(s);
+}
+function periodLabel(key, view) {
+  const p = key.split('-');
+  if (view === 'day') return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  if (view === 'month') return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+  const start = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  return start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' - ' + end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+function cell(text, cls) { const c = document.createElement('div'); if (cls) c.className = cls; c.textContent = text; return c; }
+function renderSummaries() {
+  const t = T();
+  document.getElementById('jobDayBtn').classList.toggle('active', jobView === 'day');
+  document.getElementById('jobWeekBtn').classList.toggle('active', jobView === 'week');
+  document.getElementById('jobMonthBtn').classList.toggle('active', jobView === 'month');
+  // (the personal spending summary was removed)
+
+  // Job: every box on its own line, then the total of all the boxes
+  const jobPeriods = {};
+  boxes.forEach((b, bi) => (b.entries || []).forEach(e => {
+    if (e.kind !== 'income' && e.kind !== 'job') return;
+    const d = entryDate(e);
+    if (!d) return;
+    const k = periodKey(d, jobView);
+    const period = jobPeriods[k] = jobPeriods[k] || {};
+    const row = period[b.id] = period[b.id] || { name: boxLabel(b, bi), income: 0, job: 0 };
+    row[e.kind] += e.amount;
+  }));
+  const jobBox = document.getElementById('jobSummaryList');
+  jobBox.innerHTML = '';
+  const jobKeys = Object.keys(jobPeriods).sort().reverse();
+  if (jobKeys.length === 0) { jobBox.appendChild(cell(t.noPeriods, 'savedTitle')); }
+  else {
+    const head = document.createElement('div');
+    head.className = 'periodRow head';
+    head.append(cell(''), cell(t.colIn), cell(t.colJob), cell(t.colLeft));
+    jobBox.appendChild(head);
+    jobKeys.forEach(k => {
+      const title = document.createElement('div');
+      title.className = 'periodTitle';
+      title.textContent = periodLabel(k, jobView);
+      jobBox.appendChild(title);
+      let totalIncome = 0, totalJob = 0;
+      Object.keys(jobPeriods[k]).forEach(id => {
+        const r = jobPeriods[k][id];
+        totalIncome += r.income;
+        totalJob += r.job;
+        const row = document.createElement('div');
+        row.className = 'periodRow';
+        row.append(cell(r.name, 'period'), cell(r.income.toFixed(2)), cell(r.job.toFixed(2)), cell((r.income - r.job).toFixed(2)));
+        jobBox.appendChild(row);
+      });
+      const total = document.createElement('div');
+      total.className = 'periodRow totalRow';
+      total.append(cell(t.totalLabel, 'period'), cell(totalIncome.toFixed(2)), cell(totalJob.toFixed(2)), cell((totalIncome - totalJob).toFixed(2)));
+      jobBox.appendChild(total);
+    });
+  }
+
+  // Personal money (removed)
+  return;
+  const perPeriods = {};
+  personal.forEach(p => {
+    const d = entryDate(p);
+    if (!d) return;
+    const k = periodKey(d, personalView);
+    const period = perPeriods[k] = perPeriods[k] || {};
+    const dk = dayKey(d);
+    period[dk] = (period[dk] || 0) + p.amount;
+  });
+  const perBox = document.getElementById('personalSummaryList');
+  perBox.innerHTML = '';
+  const perKeys = Object.keys(perPeriods).sort().reverse();
+  if (perKeys.length === 0) { perBox.appendChild(cell(t.noPeriods, 'savedTitle')); }
+  else {
+    const head = document.createElement('div');
+    head.className = 'periodRow head personalRow';
+    head.append(cell(''), cell(t.colSpent));
+    perBox.appendChild(head);
+    perKeys.forEach(k => {
+      const title = document.createElement('div');
+      title.className = 'periodTitle';
+      title.textContent = periodLabel(k, personalView);
+      perBox.appendChild(title);
+      let total = 0;
+      Object.keys(perPeriods[k]).sort().reverse().forEach(dk => {
+        const amount = perPeriods[k][dk];
+        total += amount;
+        const parts = dk.split('-');
+        const dayDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const row = document.createElement('div');
+        row.className = 'periodRow personalRow';
+        row.append(cell(dayDate.toLocaleDateString(), 'period'), cell(amount.toFixed(2)));
+        perBox.appendChild(row);
+      });
+      const totalRow = document.createElement('div');
+      totalRow.className = 'periodRow personalRow totalRow';
+      totalRow.append(cell(t.totalLabel, 'period'), cell(total.toFixed(2)));
+      perBox.appendChild(totalRow);
+    });
+  }
+}
+
+// ---- My personal money: what I take out for myself, saved by day ----
+function loadPersonal() {
+  try { const list = JSON.parse(LS.getItem('money_personal') || '[]'); return Array.isArray(list) ? list : []; } catch (e) { return []; }
+}
+LS.removeItem('money_personal'); // the personal spending was deleted
+let personal = [];
+function savePersonal() { LS.setItem('money_personal', JSON.stringify(personal)); }
+function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function addPersonal() {
+  const input = document.getElementById('pInput');
+  const amount = findAmount(input.value);
+  if (amount === null) { document.getElementById('fileMsg').textContent = T().typeFirstPlus; return; }
+  const now = new Date();
+  personal.unshift({ amount: amount, day: dayKey(now), time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+  savePersonal();
+  input.value = '';
+  input.focus();
+  renderPersonal();
+}
+if (document.getElementById('pInput')) document.getElementById('pInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPersonal(); });
+function renderPersonal() {
+  if (!document.getElementById('pDays')) return;
+  const days = {};
+  personal.forEach((p, i) => { (days[p.day] = days[p.day] || []).push({ p: p, i: i }); });
+  const todayKey = dayKey(new Date());
+  const todayTotal = (days[todayKey] || []).reduce((s, x) => s + x.p.amount, 0);
+  document.getElementById('pToday').textContent = todayTotal.toFixed(2);
+  const box = document.getElementById('pDays');
+  box.innerHTML = '';
+  const keys = Object.keys(days).sort().reverse(); // newest day first
+  if (keys.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'savedTitle';
+    empty.textContent = T().noPersonal;
+    box.appendChild(empty);
+    return;
+  }
+  keys.forEach(k => {
+    const block = document.createElement('div');
+    block.className = 'dayBlock';
+    const total = days[k].reduce((s, x) => s + x.p.amount, 0);
+    const head = document.createElement('div');
+    head.className = 'dayHead';
+    const dateText = document.createElement('span');
+    const parts = k.split('-');
+    dateText.textContent = new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString();
+    const totalText = document.createElement('span');
+    totalText.className = 'dayTotal';
+    totalText.textContent = '-' + total.toFixed(2);
+    head.append(dateText, totalText);
+    block.appendChild(head);
+    const ul = document.createElement('ul');
+    days[k].forEach(x => {
+      const li = document.createElement('li');
+      const note = document.createElement('span');
+      note.className = 'note';
+      note.textContent = (x.p.time || '') + ' ' + T().personalNote;
+      const amt = document.createElement('strong');
+      amt.textContent = '-' + x.p.amount.toFixed(2);
+      li.append(note, amt);
+      ul.appendChild(li);
+    });
+    block.appendChild(ul);
+    box.appendChild(block);
+  });
+}
+
+// ---- The home screen with the small boxes and the plus box ----
+function renderHome() {
+  const home = document.getElementById('home');
+  home.innerHTML = '';
+  boxes.forEach((b, i) => {
+    if (b.finished) return; // finished jobs live in the history box
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.onclick = () => openApp(b.id);
+    const rename = document.createElement('button');
+    rename.className = 'rename';
+    rename.title = T().rename;
+    rename.innerHTML = '&#9998;';
+    rename.onclick = (ev) => renameBox(ev, b.id);
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = boxLabel(b, i);
+    const small = document.createElement('div');
+    small.className = 'small';
+    small.textContent = T().afterJob;
+    const num = document.createElement('div');
+    num.className = 'num';
+    const tt = boxTotals(b);
+    num.textContent = (tt.income - tt.job).toFixed(2);
+    const opened = document.createElement('div');
+    opened.className = 'opened';
+    opened.textContent = T().opened + (b.created || '');
+    tile.append(rename, name, num, opened);
+    if (boxes.filter(x => !x.finished).length > 1) {
+      const remove = document.createElement('button');
+      remove.className = 'removeTile';
+      remove.title = T().removeBox;
+      remove.textContent = 'X';
+      remove.onclick = (ev) => removeBox(ev, b.id);
+      tile.appendChild(remove);
+    }
+    home.appendChild(tile);
+  });
+  const addBtn = document.getElementById('homeAddBtn');
+  if (addBtn) addBtn.title = T().addBox;
+  renderHistory();
+}
+
+// ---- Finish a job: it leaves the small boxes and goes into the history box ----
+async function finishJob() {
+  const box = cur();
+  if (!box) return;
+  if (!(await askConfirm(T().finishSure))) return;
+  box.finished = new Date().toLocaleDateString();
+  box.finishedDay = dayKey(new Date());
+  saveBoxes();
+  closeApp();
+}
+async function reopenJob(event, id) {
+  event.stopPropagation();
+  if (!(await askConfirm(T().reopenSure))) return;
+  const b = boxes.find(x => x.id === id);
+  if (!b) return;
+  delete b.finished;
+  delete b.finishedDay;
+  delete b.checked;
+  saveBoxes();
+  renderHome();
+  renderSummaries();
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  const done = boxes.map((b, i) => ({ b: b, i: i })).filter(x => x.b.finished);
+  if (done.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'savedTitle';
+    empty.textContent = T().noHistory;
+    list.appendChild(empty);
+    return;
+  }
+  const head = document.createElement('div');
+  head.className = 'histRow head';
+  head.append(cell(''), cell(''), cell(T().colIn), cell(T().colJob), cell(T().colLeft), cell(''));
+  list.appendChild(head);
+  done.slice().reverse().forEach(x => {
+    const tt = boxTotals(x.b);
+    const row = document.createElement('div');
+    row.className = 'histRow' + (x.b.checked ? ' checked' : '');
+    row.onclick = () => openApp(x.b.id);
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = !!x.b.checked;
+    check.onclick = (ev) => ev.stopPropagation();
+    check.onchange = () => {
+      x.b.checked = check.checked;
+      saveBoxes();
+      row.classList.toggle('checked', check.checked);
+    };
+    const reopen = document.createElement('button');
+    reopen.textContent = T().reopen;
+    reopen.onclick = (ev) => reopenJob(ev, x.b.id);
+    row.append(check, cell(boxLabel(x.b, x.i), 'histName'), cell(tt.income.toFixed(2)), cell(tt.job.toFixed(2)), cell((tt.income - tt.job).toFixed(2)), reopen);
+    const dates = document.createElement('div');
+    dates.className = 'histDates';
+    dates.textContent = T().opened + (x.b.created || '') + '  |  ' + T().finishedOn + x.b.finished;
+    row.appendChild(dates);
+    list.appendChild(row);
+  });
+}
+// ---- Remember every name that was typed, and let you pick one again ----
+function getNames() {
+  try { return JSON.parse(LS.getItem('money_names') || '[]'); } catch (e) { return []; }
+}
+function rememberName(name) {
+  const list = getNames().filter(n => n.toLowerCase() !== name.toLowerCase());
+  list.unshift(name);
+  LS.setItem('money_names', JSON.stringify(list.slice(0, 50)));
+}
+// The name box: type a name, or click a saved name. It opens on top of the page.
+let nameCallback = null;
+function openNameDialog(current, onDone) {
+  nameCallback = onDone;
+  const t = T();
+  document.getElementById('nameDialogTitle').textContent = t.renamePrompt;
+  document.getElementById('savedTitle').textContent = t.savedNames;
+  document.getElementById('nameOk').textContent = t.okBtn;
+  document.getElementById('nameCancel').textContent = t.cancelBtn;
+  const input = document.getElementById('nameInput');
+  input.placeholder = t.nameTyping;
+  input.value = current || '';
+  drawSavedNames();
+  document.getElementById('nameOverlay').classList.add('show');
+  input.focus();
+  input.select();
+}
+function drawSavedNames() {
+  const list = document.getElementById('savedList');
+  list.innerHTML = '';
+  const typed = document.getElementById('nameInput').value.trim().toLowerCase();
+  let saved = getNames();
+  // While you type, only the matching names show: names that start with your letters first, then names that contain them.
+  if (typed) {
+    const starts = saved.filter(n => n.toLowerCase().startsWith(typed));
+    const contains = saved.filter(n => !n.toLowerCase().startsWith(typed) && n.toLowerCase().includes(typed));
+    saved = starts.concat(contains);
+  }
+  if (saved.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'savedTitle';
+    empty.textContent = typed ? T().noMatch : T().noSaved;
+    list.appendChild(empty);
+    return;
+  }
+  saved.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'savedItem';
+    const pick = document.createElement('button');
+    pick.className = 'pick';
+    const isMatch = typed && name.toLowerCase().includes(typed);
+    if (isMatch) pick.style.fontWeight = 'bold';
+    pick.textContent = name;
+    pick.onclick = () => closeNameDialog(name);
+    const forget = document.createElement('button');
+    forget.className = 'forget';
+    forget.title = T().forgetName;
+    forget.textContent = 'X';
+    forget.onclick = () => {
+      LS.setItem('money_names', JSON.stringify(getNames().filter(n => n !== name)));
+      drawSavedNames();
+    };
+    row.append(pick, forget);
+    list.appendChild(row);
+  });
+}
+function submitNameDialog() {
+  const clean = document.getElementById('nameInput').value.trim();
+  closeNameDialog(clean === '' ? null : clean);
+}
+function closeNameDialog(name) {
+  document.getElementById('nameOverlay').classList.remove('show');
+  const done = nameCallback;
+  nameCallback = null;
+  if (name !== null && name !== undefined) rememberName(name);
+  if (done && name !== null && name !== undefined) done(name);
+}
+// Every time you type a letter, the matching saved names move to the top.
+document.getElementById('nameInput').addEventListener('input', drawSavedNames);
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitNameDialog();
+  if (e.key === 'Escape') closeNameDialog(null);
+});
+
+function addBox() {
+  openNameDialog('', name => {
+    boxes.push({ id: 'b' + Date.now(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
+    saveBoxes();
+    renderHome();
+  });
+}
+function renameBox(event, id) {
+  event.stopPropagation();
+  const index = boxes.findIndex(b => b.id === id);
+  openNameDialog(boxLabel(boxes[index], index), name => {
+    boxes[index].name = name;
+    saveBoxes();
+    renderHome();
+  });
+}
+// Rename the box that is open on the full page. It changes on the small box too.
+function renameOpenBox() {
+  const index = boxes.findIndex(b => b.id === currentId);
+  if (index < 0) return;
+  openNameDialog(boxLabel(boxes[index], index), name => {
+    boxes[index].name = name;
+    saveBoxes();
+    showName();
+    renderHome();
+  });
+}
+async function removeBox(event, id) {
+  event.stopPropagation();
+  if (!(await askConfirm(T().removeSure))) return;
+  boxes = boxes.filter(b => b.id !== id);
+  saveBoxes();
+  renderHome();
+}
+
+// The name on the full page for the open box.
+function showName() {
+  const index = boxes.findIndex(b => b.id === currentId);
+  if (index < 0) return;
+  const name = boxLabel(boxes[index], index);
+  document.getElementById('pageTitle').textContent = name;
+  document.getElementById('openedLine').textContent = T().opened + (boxes[index].created || '');
+  document.title = name;
+}
+
+// Spoken numbers that can come back as words, in English and Hebrew.
+const NUMBER_WORDS = {
+  zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10,
+  eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19,
+  twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90,
+  'אפס':0, 'אחד':1, 'אחת':1, 'שניים':2, 'שתיים':2, 'שתי':2, 'שני':2, 'שלוש':3, 'שלושה':3, 'ארבע':4, 'ארבעה':4,
+  'חמש':5, 'חמישה':5, 'שש':6, 'שישה':6, 'שבע':7, 'שבעה':7, 'שמונה':8, 'תשע':9, 'תשעה':9, 'עשר':10, 'עשרה':10,
+  'עשרים':20, 'שלושים':30, 'ארבעים':40, 'חמישים':50, 'שישים':60, 'שבעים':70, 'שמונים':80, 'תשעים':90
+};
+
+// Finds the number in what you said or typed: digits first, then number words.
+function findAmount(sentence) {
+  const match = sentence.match(/(\d+(?:[.,]\d+)?)/);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+  const words = sentence.toLowerCase().replace(/[-,.]/g, ' ').split(/\s+/);
+  let total = 0, found = false, current = 0;
+  for (const w of words) {
+    const word = w.replace(/^ו/, '');
+    if (w === 'hundred' || w === 'מאה' || w === 'מאות') { current = (current || 1) * 100; found = true; continue; }
+    if (w === 'thousand' || w === 'אלף' || w === 'אלפים') { total += (current || 1) * 1000; current = 0; found = true; continue; }
+    if (w in NUMBER_WORDS) { current += NUMBER_WORDS[w]; found = true; }
+    else if (word in NUMBER_WORDS && word !== w) { current += NUMBER_WORDS[word]; found = true; }
+  }
+  total += current;
+  return found ? total : null;
+}
+
+function makeRow(e, i) {
+  const box = cur();
+  const li = document.createElement('li');
+  const note = document.createElement('span');
+  note.className = 'note';
+  note.textContent = e.date + ': ' + e.note;
+  const tag = document.createElement('span');
+  tag.className = 'tag';
+  tag.textContent = T().kinds[e.kind];
+  const amt = document.createElement('strong');
+  amt.className = e.kind === 'job' ? 'personal' : e.kind;
+  amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
+  const del = document.createElement('button');
+  del.className = 'del';
+  del.textContent = 'X';
+  del.onclick = () => { box.entries.splice(i, 1); saveBoxes(); render(); };
+  const edit = document.createElement('button');
+  edit.className = 'edit';
+  edit.title = T().editTitle;
+  edit.textContent = '\u270E';
+  edit.onclick = async () => {
+    const answer = await askText(T().editPrompt + e.amount.toFixed(2) + '):', e.amount);
+    if (answer === null) return;
+    const fixed = findAmount(answer);
+    if (fixed === null) { heard.textContent = T().notNumber; return; }
+    box.entries[i].amount = fixed;
+    saveBoxes();
+    render();
+    heard.textContent = T().corrected + fixed.toFixed(2);
+  };
+  li.append(note, tag, amt, edit, del);
+  return li;
+}
+
+// Draw the open box.
+function render() {
+  const box = cur();
+  if (!box) return;
+  listIncome.innerHTML = '';
+  listJob.innerHTML = '';
+  const totals = { income: 0, job: 0 };
+  box.entries.forEach((e, i) => {
+    if (e.kind !== 'income' && e.kind !== 'job') return; // older personal entries stay hidden
+    totals[e.kind] += e.amount;
+    (e.kind === 'job' ? listJob : listIncome).appendChild(makeRow(e, i));
+  });
+  document.getElementById('tIncome').textContent = totals.income.toFixed(2);
+  document.getElementById('tTen').textContent = ((totals.income - totals.job) * box.pct / 100).toFixed(2);
+  document.getElementById('tAfterJob').textContent = (totals.income - totals.job).toFixed(2);
+  document.getElementById('tJob').textContent = totals.job.toFixed(2);
+}
+
+// The percent you can change in the yellow bar. Saved for each box.
+function changePct() {
+  const box = cur();
+  const value = parseFloat(document.getElementById('pctBox').value);
+  if (!box || isNaN(value) || value < 0) return;
+  box.pct = value;
+  saveBoxes();
+  render();
+}
+
+function addEntry(kind, amount, note) {
+  cur().entries.unshift({ kind: kind, amount: amount, note: note, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+  saveBoxes();
+  render();
+}
+
+// The microphone is only for job spending: any number you say goes there.
+function handleText(sentence) {
+  sentence = (sentence || '').trim();
+  if (!sentence) return;
+  const t = T();
+  const amount = findAmount(sentence);
+  if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
+  addEntry('job', amount, sentence);
+  heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + ' (' + t.heardWord + ': "' + sentence + '")';
+}
+
+// Adding money in from the Money coming in square.
+function addIncome() {
+  const box = document.getElementById('typedIncome');
+  const amount = findAmount(box.value);
+  if (amount === null) { heard.textContent = T().typeFirstPlus; return; }
+  addEntry('income', amount, T().typedNote + amount.toFixed(2));
+  heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.income;
+  box.value = '';
+  box.focus();
+}
+document.getElementById('typedIncome').addEventListener('keydown', e => { if (e.key === 'Enter') addIncome(); });
+
+// Typing a number and pressing the red arrow adds it to job spending.
+function addArrow(kind) {
+  const box = document.getElementById('typed');
+  const amount = findAmount(box.value);
+  if (amount === null) { heard.textContent = T().typeFirst; return; }
+  addEntry(kind, amount, T().typedNote + amount.toFixed(2));
+  heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind];
+  box.value = '';
+  box.focus();
+}
+
+// ---- Backup by email, and restore (for the open box) ----
+function getEmails() {
+  try { return JSON.parse(LS.getItem('money_emails') || '[]'); } catch (e) { return []; }
+}
+function rememberEmail(address) {
+  const list = getEmails().filter(a => a.toLowerCase() !== address.toLowerCase());
+  list.unshift(address);
+  LS.setItem('money_emails', JSON.stringify(list.slice(0, 20)));
+}
+// The email buttons are on the home screen, so they first ask which box to use.
+async function chooseBox(onChosen) {
+  if (currentId) { onChosen(cur()); return; }
+  const active = boxes.filter(b => !b.finished);
+  if (active.length === 1) { onChosen(active[0]); return; }
+  const list = boxes.map((b, i) => (i + 1) + ') ' + boxLabel(b, i) + (b.finished ? ' (' + T().finishedOn + b.finished + ')' : '')).join('\n');
+  const answer = await askText(T().chooseBox + '\n\n' + list, '1');
+  if (answer === null) return;
+  const index = parseInt(answer, 10) - 1;
+  if (isNaN(index) || index < 0 || index >= boxes.length) return;
+  onChosen(boxes[index]);
+}
+function backupByEmail() { chooseBox(doBackupByEmail); }
+function restoreBackup() { chooseBox(doRestoreBackup); }
+async function doBackupByEmail(box) {
+  const previous = getEmails();
+  const hint = previous.length ? previous.join(', ') + ')' : ')';
+  const answer = await askText(T().emailPrompt + hint, previous[0] || '');
+  if (answer === null) return;
+  const address = answer.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) { document.getElementById('fileMsg').textContent = T().emailBad; return; }
+  rememberEmail(address);
+  const backup = JSON.stringify({
+    app: 'money-tracker',
+    saved: new Date().toISOString(),
+    entries: box.entries,
+    pct: box.pct,
+    name: box.name || '',
+    lang: lang
+  });
+  const subject = encodeURIComponent(T().backupSubject + ' ' + new Date().toLocaleDateString());
+  const body = encodeURIComponent(backup);
+  window.location.href = 'mailto:' + address + '?subject=' + subject + '&body=' + body;
+}
+async function doRestoreBackup(box) {
+  const text = await askText(T().restorePrompt, '');
+  if (text === null || text.trim() === '') return;
+  const msg = document.getElementById('fileMsg');
+  let data;
+  try { data = JSON.parse(text.trim()); } catch (e) { msg.textContent = T().restoreBad; return; }
+  if (!data || data.app !== 'money-tracker' || !Array.isArray(data.entries)) { msg.textContent = T().restoreBad; return; }
+  if (!(await askConfirm(T().restoreSure))) return;
+  box.entries = data.entries;
+  if (typeof data.pct === 'number') box.pct = data.pct;
+  if (data.name) box.name = data.name;
+  saveBoxes();
+  renderHome();
+  msg.textContent = T().restoreOk;
+}
+
+// ---- Backup to a file, and load it back without doubles ----
+async function saveBackupFile() {
+  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames() }, null, 1);
+  const blob = new Blob([data], { type: 'application/json' });
+  const stamp = new Date().toISOString().slice(0, 10);
+  const fileName = 'money-tracker-backup-' + stamp + '.json';
+  // Inside claude.ai, files are saved through the page's own download box.
+  const downloads = await claudeUse('downloads');
+  if (downloads) {
+    try {
+      await downloads.save({ filename: fileName, data: data });
+      document.getElementById('fileMsg').textContent = T().fileSaved;
+    } catch (e) {
+      document.getElementById('fileMsg').textContent = T().saveCancelled;
+    }
+    return;
+  }
+  // Where supported (Chrome, Edge), open a Save as window so you choose the folder and name.
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: 'Money tracker backup', accept: { 'application/json': ['.json'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      document.getElementById('fileMsg').textContent = T().fileSavedAs + handle.name;
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') { document.getElementById('fileMsg').textContent = T().saveCancelled; return; }
+      // If the Save as window is not allowed, fall back to the normal download below.
+    }
+  }
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+  document.getElementById('fileMsg').textContent = T().fileSaved;
+}
+// Two boxes are the same when they have the same name and exactly the same entries.
+function boxFingerprint(b) {
+  return JSON.stringify([b.name || '', (b.entries || []).map(e => [e.kind, e.amount, e.note, e.date])]);
+}
+function loadBackupFile(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); } catch (e) { document.getElementById('fileMsg').textContent = T().fileBad; return; }
+    if (!data || data.app !== 'money-tracker-all' || !Array.isArray(data.boxes)) { document.getElementById('fileMsg').textContent = T().fileBad; return; }
+    // Personal spending in the file is added too, skipping entries that are already here.
+    if (false && Array.isArray(data.personal)) {
+      const seen = new Set(personal.map(p => p.day + '|' + p.amount + '|' + p.time));
+      data.personal.forEach(p => {
+        if (!p || typeof p.amount !== 'number' || !p.day) return;
+        const key = p.day + '|' + p.amount + '|' + p.time;
+        if (!seen.has(key)) { personal.push(p); seen.add(key); }
+      });
+      personal.sort((a, b) => (b.day + (b.time || '')).localeCompare(a.day + (a.time || '')));
+      savePersonal();
+      renderPersonal();
+    }
+    const have = new Set(boxes.map(boxFingerprint));
+    let added = 0, skipped = 0;
+    data.boxes.forEach(b => {
+      if (!b || !Array.isArray(b.entries)) return;
+      if (have.has(boxFingerprint(b))) { skipped++; return; }
+      // Same name but different entries: keep both, and tell them apart with a number.
+      let name = b.name || '';
+      if (name && boxes.some(x => (x.name || '') === name)) {
+        let n = 2;
+        while (boxes.some(x => (x.name || '') === name + ' (' + n + ')')) n++;
+        name = name + ' (' + n + ')';
+      }
+      const copy = { id: 'b' + Date.now() + '_' + added, name: name, entries: b.entries, pct: typeof b.pct === 'number' ? b.pct : 10, created: b.created || new Date().toLocaleDateString() };
+      boxes.push(copy);
+      have.add(boxFingerprint(copy));
+      added++;
+    });
+    if (Array.isArray(data.names)) data.names.forEach(n => { if (typeof n === 'string' && n) rememberName(n); });
+    saveBoxes();
+    renderHome();
+    document.getElementById('fileMsg').textContent = T().fileResult.replace('{added}', added).replace('{skipped}', skipped);
+  };
+  reader.readAsText(file);
+}
+
+// Open one box from the home screen, and shrink it back with the button.
+function openApp(id) {
+  currentId = id;
+  document.getElementById('homeRow').style.display = 'none';
+  document.getElementById('fileBar').style.display = 'none';
+  document.getElementById('middleArea').style.display = 'none';
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('pctBox').value = cur().pct;
+  heard.textContent = T().hint;
+  showName();
+  render();
+}
+function closeApp() {
+  currentId = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('homeRow').style.display = 'flex';
+  document.getElementById('fileBar').style.display = 'grid';
+  document.getElementById('middleArea').style.display = 'flex';
+  document.getElementById('home').style.display = 'flex';
+  renderPersonal();
+  renderSummaries();
+  renderHome();
+}
+
+// The microphone listens in the language you picked with the language button.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+function listen() {
+  startVoice(document.getElementById('micBtn'), heard, handleText);
+}
+
+// Home microphone: say an amount and a name, like "100 David". The amount goes to that box's job spending.
+function listenHome() {
+  startVoice(document.getElementById('homeMicBtn'), document.getElementById('homeMicMsg'), handleHomeText);
+}
+// Turns a name written in English or Hebrew letters into one rough sound spelling, so "Hagai", "Haggai" and the Hebrew spelling all look the same.
+function soundKey(text) {
+  const heb = { 'א':'', 'ב':'b', 'ג':'g', 'ד':'d', 'ה':'h', 'ו':'v', 'ז':'z', 'ח':'h', 'ט':'t', 'י':'y', 'כ':'k', 'ך':'k', 'ל':'l', 'מ':'m', 'ם':'m', 'נ':'n', 'ן':'n', 'ס':'s', 'ע':'', 'פ':'p', 'ף':'p', 'צ':'ts', 'ץ':'ts', 'ק':'k', 'ר':'r', 'ש':'s', 'ת':'t' };
+  let s = String(text || '').toLowerCase().replace(/[\u0591-\u05C7]/g, '');
+  s = s.split('').map(ch => (ch in heb) ? heb[ch] : ch).join('');
+  s = s.replace(/ch/g, 'h').replace(/kh/g, 'h').replace(/ph/g, 'p').replace(/c/g, 'k').replace(/q/g, 'k').replace(/w/g, 'v').replace(/x/g, 'ks').replace(/j/g, 'g').replace(/[aeiouy]/g, '').replace(/[^a-z]/g, '');
+  return s.replace(/(.)\1+/g, '$1');
+}
+// kind: 'job' (home mic and red start mic) or 'income' (green start mic).
+function handleHomeText(sentence, kind, msgEl) {
+  kind = kind || 'job';
+  const msg = msgEl || document.getElementById('homeMicMsg');
+  sentence = (sentence || '').trim();
+  const amount = findAmount(sentence);
+  if (amount === null) { msg.textContent = T().heardWord + ' "' + sentence + '" ' + T().noAmount; return; }
+  // Take the number away and keep the rest as the name.
+  let rest = sentence.replace(/\d+(?:[.,]\d+)?/g, ' ').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ');
+  rest = rest.split(/\s+/).filter(w => w && !(w.replace(/^ו/, '') in NUMBER_WORDS) && !(w in NUMBER_WORDS) && w !== 'hundred' && w !== 'thousand' && w !== 'מאה' && w !== 'מאות' && w !== 'אלף' && w !== 'אלפים' && w !== 'to' && w !== 'for' && w !== 'את' && w !== 'ל').join(' ').trim();
+  const active = boxes.map((b, i) => ({ b: b, i: i })).filter(x => !x.b.finished);
+  let match = null;
+  if (rest) {
+    const exact = active.filter(x => boxLabel(x.b, x.i).toLowerCase() === rest);
+    const part = active.filter(x => { const n = boxLabel(x.b, x.i).toLowerCase(); return n.includes(rest) || rest.includes(n); });
+    const rk = soundKey(rest);
+    const alike = rk ? active.filter(x => { const nk = soundKey(boxLabel(x.b, x.i)); return nk && (nk === rk || nk.includes(rk) || rk.includes(nk)); }) : [];
+    if (exact.length === 1) match = exact[0];
+    else if (part.length === 1) match = part[0];
+    else if (part.length === 0 && alike.length === 1) match = alike[0];
+    else if (part.length === 0 && alike.length > 1) { msg.textContent = T().micMany + ' "' + rest + '"'; return; }
+    else if (part.length > 1) { msg.textContent = T().micMany + ' "' + rest + '"'; return; }
+  }
+  if (!match) { msg.textContent = T().heardWord + ' "' + sentence + '" - ' + T().micNotFound; return; }
+  match.b.entries.unshift({ kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+  saveBoxes();
+  renderHome();
+  renderSummaries();
+  msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind] + ' (' + boxLabel(match.b, match.i) + ')';
+}
+
+// Nothing shows until the data has loaded.
+['homeRow', 'middleArea', 'fileBar'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+async function boot() {
+  const loading = document.getElementById('loadingPage');
+  loading.textContent = 'Loading... / טוען...';
+  const voice = claudeUse('dictation');
+  try {
+    await cloudLoad();
+  } catch (e) {
+    loading.textContent = '';
+    const msg = document.createElement('div');
+    msg.textContent = TEXT.he.loadError + ' / ' + TEXT.en.loadError;
+    const again = document.createElement('button');
+    again.textContent = TEXT.he.tryAgain + ' / ' + TEXT.en.tryAgain;
+    again.onclick = boot;
+    loading.append(msg, again);
+    return;
+  }
+  dictation = await voice;
+  booted = true;
+  lang = LS.getItem('money_lang') || 'he';
+  boxes = loadBoxes();
+  loading.style.display = 'none';
+  applyLang();
+  closeApp(); // always start on the home screen with the small boxes
+  // Start page: two microphone buttons first. A press on either opens the page with the boxes.
+  ['homeRow', 'middleArea', 'fileBar'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  document.getElementById('startPage').style.display = 'flex';
+  document.getElementById('startMsg').textContent = T().startHint;
+}
+boot();
+// Red mic = job spending, green mic = money in. Both: say an amount and the name of a box. They stay on this page.
+const startMsg = document.getElementById('startMsg');
+document.getElementById('startBlue').onclick = () => startVoice(document.getElementById('startBlue'), startMsg, s => handleHomeText(s, 'job', startMsg));
+document.getElementById('startGreen').onclick = () => startVoice(document.getElementById('startGreen'), startMsg, s => handleHomeText(s, 'income', startMsg));
+// The button under the mics opens the page with the small boxes.
+document.getElementById('enterBtn').onclick = () => { document.getElementById('startPage').style.display = 'none'; closeApp(); document.getElementById('toFront').style.display = 'block'; };
+document.getElementById('toFront').onclick = () => {
+  ['homeRow', 'middleArea', 'fileBar', 'app'].forEach(id => { document.getElementById(id).style.display = 'none'; });
+  document.getElementById('toFront').style.display = 'none';
+  document.getElementById('startPage').style.display = 'flex';
+  document.getElementById('startMsg').textContent = T().startHint;
+};
+</script>
+</body>
+</html>

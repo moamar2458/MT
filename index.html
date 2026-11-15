@@ -136,6 +136,26 @@
   .nameDialog h3 { margin: 0; font-size: 18px; text-align: center; }
   .nameDialog input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #bbb; border-radius: 8px; }
   .nameDialog .savedTitle { font-size: 15px; color: #666; }
+  /* Green box inside a small box: equal cards and one-line rows */
+  .cards { display: flex; gap: 8px; margin-bottom: 8px; }
+  .card { flex: 1 1 0; min-width: 0; background: white; border-radius: 8px; padding: 8px; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .card h3 { margin: 0; font-size: 14px; color: #555; font-weight: normal; }
+  .card .total, .card .amount { font-size: 22px; font-weight: bold; }
+  .jobCard { background: #fbebeb; border: 2px solid crimson; }
+  .col.in .incomeAdd { margin: 0 0 6px 0; }
+  .listTitle { font-size: 14px; color: #555; text-align: center; margin: 2px 0 4px 0; }
+  .entryList { margin-bottom: 8px; }
+  .entryList li { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 6px 8px; margin-bottom: 4px; font-size: 16px; }
+  .entryList .entryText { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+  .entryList .entryText .note { overflow-wrap: anywhere; }
+  .entryList .entryDate { font-size: 12px; color: #888; }
+  .entryList strong { white-space: nowrap; direction: ltr; }
+  .nameRow { display: flex; gap: 8px; align-items: center; }
+  .nameRow input { flex: 1; min-width: 0; }
+  .nameMic { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 22px; border: none; background: #4a6cf7; color: white; font-size: 20px; cursor: pointer; padding: 0; }
+  .nameMic.listening { background: #e0457b; }
+  .nameMicMsg { font-size: 14px; color: #333; min-height: 0; }
+  .nameMicMsg:empty { display: none; }
   .nameDialog .savedList { overflow-y: auto; max-height: 220px; display: flex; flex-direction: column; gap: 6px; }
   .savedItem { display: flex; gap: 6px; }
   .savedItem button.pick { flex: 1; padding: 9px; font-size: 16px; text-align: start; border: 1px solid #4a6cf7; border-radius: 8px; background: #f4f6ff; cursor: pointer; }
@@ -166,7 +186,11 @@
 #jobSummary:not(.closed) .summaryList { max-height: 52vh; }
 #historyBox:not(.closed) { max-height: 66vh; }
 /* While one of them is open, the small boxes get smaller to make room */
-body.compactBoxes #homeRow #home { height: 84px; padding-top: 4px; padding-bottom: 4px; gap: 8px; }
+/* Normal: two rows of boxes (2 x 140px + 16px gap + 16px padding), then it scrolls inside */
+#homeRow { max-height: none; }
+#homeRow #home { height: 314px; }
+/* Compact: one row (68px + 8px padding), then it scrolls inside */
+body.compactBoxes #homeRow #home { height: 78px; padding-top: 4px; padding-bottom: 4px; gap: 8px; }
 body.compactBoxes .tile { width: 110px; height: 68px; border-width: 2px; border-radius: 12px; gap: 0; padding: 4px; }
 body.compactBoxes .tile .name { font-size: 14px; margin-top: 8px; }
 body.compactBoxes .tile .num { font-size: 15px; }
@@ -215,7 +239,7 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 <div id="homeRow">
   <div id="jobSide">
     <h2 class="sideTitle" style="display:none" data-t="jobTitle"></h2>
-    <div class="homeMicRow"><div class="homeMicLine"><button class="homeMic" id="homeMicBtn" onclick="listenHome()">&#127908;</button><button class="homeAdd" id="homeAddBtn" onclick="addBox()">+</button></div><span class="homeMicMsg" id="homeMicMsg"></span></div>
+    <div class="homeMicRow"><div class="homeMicLine"><button class="homeMic" id="homeMicBtn" onclick="addBox()" data-t="newCardBtn"></button></div><span class="homeMicMsg" id="homeMicMsg"></span></div>
     <div id="home"></div>
   </div>
 </div>
@@ -248,7 +272,8 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 <div id="nameOverlay" onclick="closeNameDialog(null)">
   <div class="nameDialog" onclick="event.stopPropagation()">
     <h3 id="nameDialogTitle"></h3>
-    <input type="text" id="nameInput" maxlength="40">
+    <div class="nameRow"><input type="text" id="nameInput" maxlength="40"><button class="nameMic" id="nameMic" onclick="sayName()">&#127908;</button></div>
+    <div class="nameMicMsg" id="nameMicMsg"></div>
     <div class="savedTitle" id="savedTitle"></div>
     <div class="savedList" id="savedList"></div>
     <div class="dialogButtons">
@@ -259,7 +284,6 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 </div>
 
 <div id="app">
-<button class="shrinkBtn" onclick="closeApp()" data-t="shrink"></button>
 <h1><span id="pageTitle"></span> <button class="titleEdit" id="titleEdit" onclick="renameOpenBox()">&#9998;</button></h1>
 <div class="openedLine" id="openedLine"></div>
 
@@ -279,31 +303,31 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 
     <div class="col in">
       <h2 class="income" data-t="incomeTitle"></h2>
-      <div class="incomeRow">
-        <div class="bar">
+      <!-- Money in: two equal cards, the add field, then the list -->
+      <div class="cards">
+        <div class="card">
           <h3 data-t="moneyIn"></h3>
           <div class="total income" id="tIncome">0.00</div>
-          <div class="incomeAdd">
-            <input type="text" id="typedIncome" inputmode="decimal" data-p="addPlaceholder">
-            <button class="addIncome" onclick="addIncome()">+</button>
-          </div>
-          <div class="incomeList"><ul id="listIncome"></ul></div>
         </div>
-        <div class="tenBar">
+        <div class="card tenBar">
           <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
           <div class="amount" id="tTen">0.00</div>
         </div>
       </div>
-      <div class="incomeRow">
-        <div class="jobHistory">
-          <h3 data-t="jobList"></h3>
-          <div class="jobList"><ul id="listJob"></ul></div>
-        </div>
-        <div class="bar jobBar">
+      <div class="incomeAdd">
+        <input type="text" id="typedIncome" inputmode="decimal" data-p="addPlaceholder">
+        <button class="addIncome" onclick="addIncome()">+</button>
+      </div>
+      <ul id="listIncome" class="entryList"></ul>
+      <!-- Job spending: its total, then the list -->
+      <div class="cards">
+        <div class="card jobCard">
           <h3 data-t="jobSpending"></h3>
           <div class="total personal" id="tJob">0.00</div>
         </div>
       </div>
+      <div class="listTitle" data-t="jobList"></div>
+      <ul id="listJob" class="entryList"></ul>
     </div>
 
     <div class="belowRow">
@@ -589,6 +613,7 @@ const TEXT = {
     startExpenses: 'הוצאות',
     startIncome: 'הכנסות',
     startNewCard: 'כרטיס חדש',
+    newCardBtn: '+ כרטיס חדש',
     newCardAdded: 'נפתח כרטיס חדש: ',
     startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד". סגול: אמרו שם לכרטיס חדש.',
     syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
@@ -689,6 +714,7 @@ const TEXT = {
     startExpenses: 'Expenses',
     startIncome: 'Income',
     startNewCard: 'New card',
+    newCardBtn: '+ New card',
     newCardAdded: 'New card opened: ',
     startHint: 'Red and green: say an amount and a name, for example "100 David". Purple: say a name for a new card.',
     syncError: 'Saving did not work. Check your internet connection, trying again...',
@@ -1093,6 +1119,8 @@ function openNameDialog(current, onDone) {
   const input = document.getElementById('nameInput');
   input.placeholder = t.nameTyping;
   input.value = current || '';
+  document.getElementById('nameMicMsg').textContent = '';
+  document.getElementById('nameMic').title = t.nameTyping;
   drawSavedNames();
   document.getElementById('nameOverlay').classList.add('show');
   input.focus();
@@ -1137,12 +1165,24 @@ function drawSavedNames() {
     list.appendChild(row);
   });
 }
+// The mic in the name window: say the name and it is written into the box (check it, then press OK).
+function sayName() {
+  const msg = document.getElementById('nameMicMsg');
+  startVoice(document.getElementById('nameMic'), msg, text => {
+    const input = document.getElementById('nameInput');
+    input.value = String(text || '').trim().replace(/[.!?,]+$/, '').slice(0, 40);
+    msg.textContent = '';
+    drawSavedNames();
+    input.focus();
+  });
+}
 function submitNameDialog() {
   const clean = document.getElementById('nameInput').value.trim();
   closeNameDialog(clean === '' ? null : clean);
 }
 function closeNameDialog(name) {
   document.getElementById('nameOverlay').classList.remove('show');
+  if (dictation && dictation.active()) dictation.stop().catch(() => {});
   const done = nameCallback;
   nameCallback = null;
   if (name !== null && name !== undefined) rememberName(name);
@@ -1230,12 +1270,16 @@ function findAmount(sentence) {
 function makeRow(e, i) {
   const box = cur();
   const li = document.createElement('li');
+  // One line: what it was (with the date small underneath), the amount, then correct and delete.
+  const text = document.createElement('div');
+  text.className = 'entryText';
   const note = document.createElement('span');
   note.className = 'note';
-  note.textContent = e.date + ': ' + e.note;
-  const tag = document.createElement('span');
-  tag.className = 'tag';
-  tag.textContent = T().kinds[e.kind];
+  note.textContent = e.note;
+  const date = document.createElement('span');
+  date.className = 'entryDate';
+  date.textContent = e.date || '';
+  text.append(note, date);
   const amt = document.createElement('strong');
   amt.className = e.kind === 'job' ? 'personal' : e.kind;
   amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
@@ -1257,7 +1301,7 @@ function makeRow(e, i) {
     render();
     heard.textContent = T().corrected + fixed.toFixed(2);
   };
-  li.append(note, tag, amt, edit, del);
+  li.append(text, amt, edit, del);
   return li;
 }
 
@@ -1620,7 +1664,9 @@ document.getElementById('startPurple').onclick = () => {
 };
 // The button under the mics opens the page with the small boxes.
 document.getElementById('enterBtn').onclick = () => { document.getElementById('startPage').style.display = 'none'; closeApp(); document.getElementById('toFront').style.display = 'block'; };
+// The corner button goes back one page: from inside a box to the small boxes, from there to the first page.
 document.getElementById('toFront').onclick = () => {
+  if (currentId) { closeApp(); return; }
   ['homeRow', 'middleArea', 'fileBar', 'app'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('toFront').style.display = 'none';
   document.getElementById('startPage').style.display = 'flex';

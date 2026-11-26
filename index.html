@@ -565,6 +565,10 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 /* The edit window */
 #editOverlay { display: none; position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); z-index: 56; align-items: center; justify-content: center; }
 #editOverlay.show { display: flex; }
+.editWhich { font-family: var(--num); font-size: 13px; color: var(--soft); background: var(--bg); border-radius: 12px; padding: 8px 10px; text-align: center; overflow-wrap: anywhere; }
+.editWhich:empty { display: none; }
+.tapEdit { cursor: pointer; }
+.tapEdit.editingRow, .tapEdit.editingRow:hover { outline: 2px solid var(--violet); outline-offset: -2px; background: var(--violetBg) !important; }
 .editDialog { width: min(380px, 94vw); display: flex; flex-direction: column; gap: 10px; }
 .editKind { margin: 0; }
 .editField { display: flex; flex-direction: column; gap: 4px; text-align: start; font-size: 13px; color: var(--muted); }
@@ -758,6 +762,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 <div id="editOverlay" onclick="closeEntryEditor()">
   <div class="nameDialog editDialog" onclick="event.stopPropagation()">
     <h3 data-t="editEntryTitle"></h3>
+    <div class="editWhich" id="editWhich"></div>
     <div class="viewTabs editKind" id="editKindRow">
       <button type="button" class="viewTab" id="editKindIn" onclick="setEditKind('income')" data-t="kindIn"></button>
       <button type="button" class="viewTab" id="editKindOut" onclick="setEditKind('job')" data-t="kindOut"></button>
@@ -2008,8 +2013,21 @@ function fillEditItems(scope, current) {
   });
   sel.value = current || '';
 }
-function openEntryEditor(e, scope, canKind, onSave) {
-  editing = { e: e, scope: scope, onSave: onSave, kind: e.kind === 'income' ? 'income' : 'job', canKind: canKind };
+// rowEl: the row that was tapped; it stays marked while its edit window is open.
+function openEntryEditor(e, scope, canKind, onSave, rowEl) {
+  closeEntryEditor();
+  editing = { e: e, scope: scope, onSave: onSave, kind: e.kind === 'income' ? 'income' : 'job', canKind: canKind, row: rowEl || null };
+  if (rowEl) rowEl.classList.add('editingRow');
+  // The row's own details on top, so it is clear which one is being edited.
+  const text = shownNote(e) || (e.cat || '');
+  const which = document.getElementById('editWhich');
+  which.innerHTML = '';
+  [e.date || '', text].filter(Boolean).forEach(x => { which.appendChild(document.createTextNode(x)); which.appendChild(document.createTextNode('  ·  ')); });
+  const amt = document.createElement('bdi');
+  amt.dir = 'ltr';
+  amt.className = e.kind === 'income' ? 'income' : 'personal';
+  amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
+  which.appendChild(amt);
   document.getElementById('editKindRow').style.display = canKind ? '' : 'none';
   document.getElementById('editAmount').value = e.amount;
   document.getElementById('editNote').value = editText(e);
@@ -2021,7 +2039,16 @@ function openEntryEditor(e, scope, canKind, onSave) {
   document.getElementById('editOverlay').classList.add('show');
   document.getElementById('editAmount').focus();
 }
-function closeEntryEditor() { document.getElementById('editOverlay').classList.remove('show'); editing = null; }
+function closeEntryEditor() {
+  document.getElementById('editOverlay').classList.remove('show');
+  document.querySelectorAll('.editingRow').forEach(r => r.classList.remove('editingRow'));
+  editing = null;
+}
+// Tapping a row (not its buttons) opens the edit window for that row.
+function editOnTap(rowEl, open) {
+  rowEl.classList.add('tapEdit');
+  rowEl.addEventListener('click', ev => { if (ev.target.closest('button, input, select, a')) return; open(); });
+}
 function saveEntryEditor() {
   if (!editing) return;
   const e = editing.e;
@@ -2364,7 +2391,9 @@ function renderPersonalPage() {
       edit.className = 'edit';
       edit.title = t.editTitle;
       edit.textContent = '✎';
-      edit.onclick = () => openEntryEditor(p, 'personal', true, () => { savePersonal(); renderPersonalPage(); });
+      const editThis = () => openEntryEditor(p, 'personal', true, () => { savePersonal(); renderPersonalPage(); }, line);
+      edit.onclick = editThis;
+      editOnTap(line, editThis);
       const del = document.createElement('button');
       del.className = 'del';
       del.textContent = '✕';
@@ -2475,7 +2504,9 @@ function renderBusiness() {
     edit.className = 'edit';
     edit.title = t.editTitle;
     edit.textContent = '✎';
-    edit.onclick = () => openEntryEditor(x, 'business', false, () => { saveBusiness(); renderBusiness(); });
+    const editThis = () => openEntryEditor(x, 'business', false, () => { saveBusiness(); renderBusiness(); }, row);
+    edit.onclick = editThis;
+    editOnTap(row, editThis);
     const del = document.createElement('button');
     del.className = 'del';
     del.textContent = '\u2715';
@@ -2585,6 +2616,7 @@ function renderSummaries() {
             const line = document.createElement('div');
             line.className = 'detailLine';
             line.append(cell(e.date || ''), cell(shownNote(e) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            editOnTap(line, () => openEntryEditor(e, 'business', true, () => { saveBoxes(); renderHome(); renderSummaries(); }, line));
             detail.appendChild(line);
           });
           // Last line: the total of this card's job spending in this period.
@@ -3047,13 +3079,15 @@ function makeRow(e, i) {
   edit.className = 'edit';
   edit.title = T().editTitle;
   edit.textContent = '\u270E';
-  edit.onclick = () => openEntryEditor(e, 'business', true, () => {
+  const editThis = () => openEntryEditor(e, 'business', true, () => {
     saveBoxes();
     render();
     renderHome();
     renderSummaries();
     heard.textContent = T().corrected + e.amount.toFixed(2);
-  });
+  }, li);
+  edit.onclick = editThis;
+  editOnTap(li, editThis);
   li.append(text, amt, edit, del);
   return li;
 }

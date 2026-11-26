@@ -488,7 +488,7 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 .clearHistoryBtn { align-self: center; margin-top: 10px; flex-shrink: 0; color: var(--redText); border-color: var(--redLine); background: var(--redBg); }
 .clearHistoryBtn:hover { background: var(--redBg); color: var(--red); border-color: var(--red); }
 #businessBox.closed { padding: 6px 10px; }
-body.businessOpen #home { display: none !important; }
+body.businessOpen #home, body.businessOpen .homeMicRow { display: none !important; }
 #businessBox:not(.closed) .summaryList { max-height: 52vh; }
 .bizTitle { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
 .bizTitle .foldSum { direction: ltr; }
@@ -503,7 +503,10 @@ body.businessOpen #home { display: none !important; }
 .bizDate { font-size: 11px; color: var(--muted); }
 .bizLine strong { font-family: var(--num); direction: ltr; white-space: nowrap; }
 .periodRow.bizTotal { grid-template-columns: 1fr auto; margin-top: 8px; }
-/* אישי: the "נכנס" and "יצא" cards open their part of the page */
+/* אישי: "נכנס" and "יוצא" side by side, a long "נשאר" across the full width underneath */
+#personalCards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#personalCards .card.leftCard { grid-column: 1 / -1; }
+/* אישי: the "נכנס" and "יוצא" cards open their part of the page */
 #personalCards .card.clickCard { font: inherit; color: inherit; cursor: pointer; border-width: 2px; }
 #personalCards .card.clickCard:hover { background: var(--surface2); }
 #personalCards .card.clickCard h3::after { content: ' \25BE'; }
@@ -622,7 +625,6 @@ body.businessOpen #home { display: none !important; }
       <button id="jobWeekBtn" class="viewTab active" onclick="setJobView('week')" data-t="weekly"></button>
       <button id="jobMonthBtn" class="viewTab" onclick="setJobView('month')" data-t="monthly"></button>
       <button id="jobNameBtn" class="viewTab" onclick="setJobView('name')" data-t="byName"></button>
-      <button id="jobCatBtn" class="viewTab" onclick="setJobView('category')" data-t="byCategory"></button>
     </div>
     <div class="summaryList" id="jobSummaryList"></div>
   </div>
@@ -1067,7 +1069,7 @@ const TEXT = {
     personalBtn: 'אישי',
     personalPageTitle: 'אישי',
     personalIn: 'נכנס',
-    personalOut: 'יצא',
+    personalOut: 'יוצא',
     personalLeft: 'נשאר',
     personalInKind: 'הכנסה אישית',
     personalOutKind: 'הוצאה אישית',
@@ -1738,7 +1740,7 @@ function renderPersonalPage() {
   cards.innerHTML = '';
   [[t.personalIn, all.income, 'income', 'in'], [t.personalOut, all.out, 'personal', 'out'], [t.personalLeft, all.income - all.out, 'blueColor', null]].forEach(c => {
     const card = document.createElement(c[3] ? 'button' : 'div');
-    card.className = 'card';
+    card.className = c[3] ? 'card' : 'card leftCard'; // "נשאר": the long box under the other two
     const h = document.createElement('h3');
     h.textContent = c[0];
     const v = document.createElement('div');
@@ -1816,7 +1818,7 @@ function renderPersonalPage() {
       del.className = 'del';
       del.textContent = '✕';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
-      const noteCell = cell(shownNote(p, false), 'perNote');
+      const noteCell = cell(shownNote(p), 'perNote');
       if (itemTag(p)) noteCell.appendChild(cell(itemTag(p), 'itemChip'));
       line.append(cell(p.date || '', 'perDate'), noteCell, amt, edit, del);
       box.appendChild(line);
@@ -1898,7 +1900,7 @@ function renderBusiness() {
       row.onclick = () => openApp(x.b.id); // click a line to open its card
       const text = document.createElement('div');
       text.className = 'bizText';
-      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(shownNote(x.e, true), 'bizNote'));
+      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(shownNote(x.e), 'bizNote'));
       if (itemTag(x.e)) text.appendChild(cell(itemTag(x.e), 'itemChip'));
       text.appendChild(cell(x.e.date || '', 'bizDate'));
       const amt = document.createElement('strong');
@@ -1920,19 +1922,12 @@ function renderSummaries() {
   document.getElementById('jobWeekBtn').classList.toggle('active', jobView === 'week');
   document.getElementById('jobMonthBtn').classList.toggle('active', jobView === 'month');
   document.getElementById('jobNameBtn').classList.toggle('active', jobView === 'name');
-  document.getElementById('jobCatBtn').classList.toggle('active', jobView === 'category');
   // (the personal spending summary was removed)
 
-  // By name: each card on its own line with its totals. By category: job spending per category and item.
-  if (jobView === 'name' || jobView === 'category') {
+  // By name: each card on its own line with its totals.
+  if (jobView === 'name') {
     const list = document.getElementById('jobSummaryList');
     list.innerHTML = '';
-    if (jobView === 'category') {
-      const spent = [];
-      boxes.forEach(b => (b.entries || []).forEach(e => { if (e.kind === 'job') spent.push(e); }));
-      renderCategoryBreakdown(list, spent, 'job', renderSummaries, t.noPeriods);
-      return;
-    }
     if (!boxes.length) { list.appendChild(cell(t.noPeriods, 'savedTitle')); return; }
     const head = document.createElement('div');
     head.className = 'periodRow head byName';
@@ -2013,7 +2008,7 @@ function renderSummaries() {
           r.items.slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(e => {
             const line = document.createElement('div');
             line.className = 'detailLine';
-            line.append(cell(e.date || ''), cell(shownNote(e, true) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            line.append(cell(e.date || ''), cell(shownNote(e) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
             detail.appendChild(line);
           });
           // Last line: the total of this card's job spending in this period.
@@ -2458,7 +2453,7 @@ function makeRow(e, i) {
   text.className = 'entryText';
   const note = document.createElement('span');
   note.className = 'note';
-  note.textContent = shownNote(e, true);
+  note.textContent = shownNote(e);
   const date = document.createElement('span');
   date.className = 'entryDate';
   date.textContent = e.date || '';
@@ -2636,9 +2631,9 @@ function spendNote(sentence, item, card) {
 }
 // Money in, in a customer's card: no text at all (the card already says who it is from, the amount is the plus amount).
 function cardNote(kind, sentence, item, card) { return kind === 'income' ? '' : spendNote(sentence, item, card); }
-// What an entry shows. Older entries were saved with the whole sentence, so the same rules are used when drawing.
-function shownNote(e, inCard) {
-  if (e.kind === 'income') return inCard ? '' : (e.note || '');
+// What an entry shows (the same in the cards, in עסק and in אישי). Older entries were saved with the whole sentence, so the same rules are used when drawing.
+function shownNote(e) {
+  if (e.kind === 'income') return ''; // money in (business or personal): only the date and the plus amount
   if (e.item) return e.item;
   return e.note || '';
 }
@@ -2945,7 +2940,7 @@ function chooseTarget(sentence, amount, kind, msg, item) {
   personalBtn.textContent = t.personalBtn;
   personalBtn.onclick = () => {
     close();
-    addPersonalEntry(kind, amount, kind === 'income' ? sentence : spendNote(sentence, item, null), item);
+    addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
     msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind) + (item && kind !== 'income' ? ' · ' + item : '');
   };
   list.appendChild(personalBtn);
@@ -2987,7 +2982,7 @@ function handleHomeText(sentence, kind, msgEl) {
   const item = itemMatch ? itemMatch.name : '';
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
-    addPersonalEntry(kind, amount, kind === 'income' ? sentence : spendNote(sentence, item, null), item);
+    addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');
     return;
   }

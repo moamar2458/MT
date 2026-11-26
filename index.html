@@ -480,6 +480,35 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 .itemsOpenBtn { color: var(--goldText); border-color: var(--goldLine); }
 #personalPage .itemsOpenBtn { display: block; margin: 14px auto 20px; }
 
+/* עסק: a line like "סיכום העבודה", above it */
+#businessRow { display: flex; margin: 4px 0 8px 0; }
+#businessBox { border: 1px solid var(--orangeLine); }
+.panel.closed #businessList { display: none; }
+#businessBox.closed { padding: 6px 10px; }
+#businessBox:not(.closed) .summaryList { max-height: 52vh; }
+.bizTitle { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.bizTitle .foldSum { direction: ltr; }
+.bizTitle.bizIn { background: var(--greenBg); color: var(--greenText); }
+.bizTitle.bizOut { background: var(--redBg); color: var(--redText); }
+.bizLine { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--rowLine); cursor: pointer; }
+.bizLine:hover { background: var(--surface2); }
+.bizText { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: start; }
+.bizName { font-weight: 700; font-size: 15px; }
+.bizNote { font-size: 13px; color: var(--soft); overflow-wrap: anywhere; }
+.bizNote:empty { display: none; }
+.bizDate { font-size: 11px; color: var(--muted); }
+.bizLine strong { font-family: var(--num); direction: ltr; white-space: nowrap; }
+.periodRow.bizTotal { grid-template-columns: 1fr auto; margin-top: 8px; }
+/* אישי: the "נכנס" and "יצא" cards open their part of the page */
+#personalCards .card.clickCard { font: inherit; color: inherit; cursor: pointer; border-width: 2px; }
+#personalCards .card.clickCard:hover { background: var(--surface2); }
+#personalCards .card.clickCard h3::after { content: ' \25BE'; }
+#personalCards .card.clickCard.open h3::after { content: ' \25B4'; }
+#personalCards .card.inCard.open { border-color: var(--green); background: var(--greenBg); }
+#personalCards .card.outCard.open { border-color: var(--red); background: var(--redBg); }
+.perSectionTitle { font-size: 18px; font-weight: 700; text-align: start; margin: 6px 2px 10px; }
+.perTotal.perTotalOne { grid-template-columns: 1fr; }
+
 /* Settings: the gear at the top right of the first page, and its window */
 .settingsBtn { position: fixed; top: 8px; right: 8px; z-index: 10; width: 44px; height: 44px; padding: 0; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 22px; display: none; align-items: center; justify-content: center; cursor: pointer; }
 .settingsBtn.show { display: flex; }
@@ -551,6 +580,9 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 <div id="personalPage" style="display:none">
   <h1 data-t="personalPageTitle"></h1>
   <div class="cards" id="personalCards"></div>
+  <!-- Closed when the page opens. "נכנס" opens the income, "יצא" opens the spending. -->
+  <div id="personalSection" style="display:none">
+  <h2 class="perSectionTitle" id="perSectionTitle"></h2>
   <div class="viewTabs">
     <button id="perDayBtn" class="viewTab" onclick="setPersonalView('day')" data-t="daily"></button>
     <button id="perWeekBtn" class="viewTab active" onclick="setPersonalView('week')" data-t="weekly"></button>
@@ -558,7 +590,8 @@ button.edit:hover { background: var(--hover); color: var(--text); }
     <button id="perCatBtn" class="viewTab" onclick="setPersonalView('category')" data-t="byCategory"></button>
   </div>
   <div id="personalList"></div>
-  <button class="fileBtn itemsOpenBtn" onclick="openItems()" data-t="itemsBtn"></button>
+  <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems()" data-t="itemsBtn"></button>
+  </div>
 </div>
 <button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><span aria-hidden="true">&#8617;</span></button>
 <!-- The small boxes are made by the script below. -->
@@ -570,6 +603,13 @@ button.edit:hover { background: var(--hover); color: var(--text); }
   </div>
 </div>
 <div id="middleArea">
+<!-- Business: all the money in and all the spending of every card -->
+<div id="businessRow">
+  <div class="summaryBox panel closed" id="businessBox">
+    <h2 class="sideTitle jobColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
+    <div class="summaryList" id="businessList"></div>
+  </div>
+</div>
 <div id="summaryRow">
   <div class="summaryBox panel closed" id="jobSummary">
     <h2 class="sideTitle jobColor panelTitle" data-t="jobSummaryTitle" onclick="togglePanel('summary')"></h2>
@@ -1061,6 +1101,11 @@ const TEXT = {
     hideHints: 'הסתרת טקסט ההסברים',
     hideHintsNote: 'מסתיר את ההוראות שמסבירות מה לומר בכל המסכים',
     lightTheme: 'עיצוב בהיר',
+    businessTitle: 'עסק',
+    bizIncome: 'הכנסות',
+    bizSpending: 'הוצאות',
+    bizNone: 'אין עדיין.',
+    noPersonalIn: 'עדיין אין הכנסות אישיות.',
     lightThemeNote: 'כבוי = עיצוב כהה',
     kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
     micLang: 'he-IL',
@@ -1202,6 +1247,11 @@ const TEXT = {
     hideHints: 'Hide instruction text',
     hideHintsNote: 'Hides the help text that tells you what to say, on every screen',
     lightTheme: 'Light style',
+    businessTitle: 'Business',
+    bizIncome: 'Income',
+    bizSpending: 'Spending',
+    bizNone: 'Nothing yet.',
+    noPersonalIn: 'No personal income yet.',
     lightThemeNote: 'Off = dark style',
     kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
     micLang: 'en-GB',
@@ -1654,7 +1704,15 @@ function openPersonalPage() {
   document.getElementById('toFront').style.display = 'block';
   renderPersonalPage();
 }
-// Totals on top, then each day / week / month: its items and a total line (in, out, left).
+// Which part of the personal page is open: null (closed, only the three cards), 'in' (money in) or 'out' (spending).
+let personalOpen = null;
+function togglePersonalSection(which) {
+  personalOpen = personalOpen === which ? null : which;
+  if (personalOpen === 'in' && personalView === 'category') personalView = 'week'; // "by category" is only for spending
+  renderPersonalPage();
+}
+// The three cards on top: "נכנס" opens the money in, "יצא" opens the spending, "נשאר" just shows what is left.
+// Below them, only the open part: its view buttons and its list by day / week / month (or by category for spending).
 function renderPersonalPage() {
   const t = T();
   document.getElementById('perDayBtn').classList.toggle('active', personalView === 'day');
@@ -1669,8 +1727,8 @@ function renderPersonalPage() {
   const all = sum(personal);
   const cards = document.getElementById('personalCards');
   cards.innerHTML = '';
-  [[t.personalIn, all.income, 'income'], [t.personalOut, all.out, 'personal'], [t.personalLeft, all.income - all.out, 'blueColor']].forEach(c => {
-    const card = document.createElement('div');
+  [[t.personalIn, all.income, 'income', 'in'], [t.personalOut, all.out, 'personal', 'out'], [t.personalLeft, all.income - all.out, 'blueColor', null]].forEach(c => {
+    const card = document.createElement(c[3] ? 'button' : 'div');
     card.className = 'card';
     const h = document.createElement('h3');
     h.textContent = c[0];
@@ -1678,18 +1736,37 @@ function renderPersonalPage() {
     v.className = 'total ' + c[2];
     v.textContent = c[1].toFixed(2);
     card.append(h, v);
+    if (c[3]) {
+      const which = c[3];
+      card.classList.add('clickCard', which === 'in' ? 'inCard' : 'outCard');
+      card.type = 'button';
+      card.classList.toggle('open', personalOpen === which);
+      card.setAttribute('aria-expanded', personalOpen === which ? 'true' : 'false');
+      card.onclick = () => togglePersonalSection(which);
+    }
     cards.appendChild(card);
   });
+  const section = document.getElementById('personalSection');
+  section.style.display = personalOpen ? 'block' : 'none';
+  if (!personalOpen) return;
+  const isIn = personalOpen === 'in';
+  const sectionTitle = document.getElementById('perSectionTitle');
+  sectionTitle.textContent = isIn ? t.incomeTitle : t.startExpenses;
+  sectionTitle.className = 'perSectionTitle ' + (isIn ? 'income' : 'personal');
+  document.getElementById('perCatBtn').style.display = isIn ? 'none' : '';
+  document.getElementById('perItemsBtn').style.display = isIn ? 'none' : '';
+  const shown = personal.filter(p => isIn ? p.kind === 'income' : p.kind !== 'income');
   const box = document.getElementById('personalList');
   box.innerHTML = '';
-  if (personal.length === 0) { box.appendChild(cell(hintsHidden() ? t.noPersonal : t.personalEmpty, 'savedTitle')); return; }
+  if (personal.length === 0) { box.appendChild(cell(hintsHidden() ? (isIn ? t.noPersonalIn : t.noPersonal) : t.personalEmpty, 'savedTitle')); return; }
+  if (shown.length === 0) { box.appendChild(cell(isIn ? t.noPersonalIn : t.noPersonal, 'savedTitle')); return; }
   // By category: how much personal spending went on each category (חשמל, אוכל...).
-  if (personalView === 'category') {
-    renderCategoryBreakdown(box, personal.filter(p => p.kind !== 'income'), 'personal', renderPersonalPage, t.noPersonal);
+  if (!isIn && personalView === 'category') {
+    renderCategoryBreakdown(box, shown, 'personal', renderPersonalPage, t.noPersonal);
     return;
   }
   const periods = {};
-  personal.forEach(p => {
+  shown.forEach(p => {
     const d = entryDate(p);
     if (!d) return;
     const k = periodKey(d, personalView);
@@ -1697,12 +1774,13 @@ function renderPersonalPage() {
   });
   Object.keys(periods).sort().reverse().forEach((k, idx) => {
     // Same as the job summary: only the newest date bar is open until you click.
-    const foldKey = 'personal|' + personalView + '|' + k;
+    const foldKey = 'personal|' + personalOpen + '|' + personalView + '|' + k;
     const open = periodFolds.has(foldKey) ? periodFolds.get(foldKey) : idx === 0;
     const ps = sum(periods[k]);
+    const periodTotal = isIn ? ps.income : ps.out;
     const title = document.createElement('div');
     title.className = 'periodTitle foldTitle';
-    title.append(cell((open ? '▾ ' : '▸ ') + periodLabel(k, personalView)), cell('+' + ps.income.toFixed(2) + '  -' + ps.out.toFixed(2), 'foldSum'));
+    title.append(cell((open ? '▾ ' : '▸ ') + periodLabel(k, personalView)), cell((isIn ? '+' : '-') + periodTotal.toFixed(2), 'foldSum'));
     title.onclick = () => { periodFolds.set(foldKey, !open); renderPersonalPage(); };
     box.appendChild(title);
     if (!open) return;
@@ -1727,23 +1805,20 @@ function renderPersonalPage() {
       };
       const del = document.createElement('button');
       del.className = 'del';
-      del.textContent = '\u2715';
+      del.textContent = '✕';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
       const noteCell = cell(p.note || '', 'perNote');
       if (p.item) noteCell.appendChild(cell(itemLabel(p.item), 'itemChip'));
       line.append(cell(p.date || '', 'perDate'), noteCell, amt, edit, del);
       box.appendChild(line);
     });
-    const s = sum(periods[k]);
     const total = document.createElement('div');
-    total.className = 'perTotal';
-    [[t.personalIn, s.income], [t.personalOut, s.out], [t.personalLeft, s.income - s.out]].forEach(c => {
-      const d = document.createElement('div');
-      const label = document.createElement('span');
-      label.textContent = c[0];
-      d.append(label, document.createTextNode(c[1].toFixed(2)));
-      total.appendChild(d);
-    });
+    total.className = 'perTotal perTotalOne';
+    const d = document.createElement('div');
+    const label = document.createElement('span');
+    label.textContent = t.totalLabel;
+    d.append(label, document.createTextNode(periodTotal.toFixed(2)));
+    total.appendChild(d);
     box.appendChild(total);
   });
 }
@@ -1788,8 +1863,50 @@ function periodLabel(key, view) {
   return start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' - ' + end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 function cell(text, cls) { const c = document.createElement('div'); if (cls) c.className = cls; c.textContent = text; return c; }
+// ---- עסק: all the money in and all the spending of every card (open and finished), newest first ----
+function renderBusiness() {
+  const t = T();
+  const box = document.getElementById('businessList');
+  box.innerHTML = '';
+  const income = [], spending = [];
+  boxes.forEach((b, i) => (b.entries || []).forEach(e => {
+    if (e.kind === 'income') income.push({ e: e, b: b, i: i });
+    else if (e.kind === 'job') spending.push({ e: e, b: b, i: i });
+  }));
+  const newest = (x, y) => (y.e.day || '').localeCompare(x.e.day || '');
+  const total = list => list.reduce((s, x) => s + x.e.amount, 0);
+  const tIn = total(income), tOut = total(spending);
+  [[t.bizIncome, income, tIn, true], [t.bizSpending, spending, tOut, false]].forEach(part => {
+    const title = document.createElement('div');
+    title.className = 'periodTitle bizTitle ' + (part[3] ? 'bizIn' : 'bizOut');
+    title.append(cell(part[0]), cell((part[3] ? '+' : '-') + part[2].toFixed(2), 'foldSum'));
+    box.appendChild(title);
+    if (!part[1].length) { box.appendChild(cell(t.bizNone, 'savedTitle')); return; }
+    part[1].slice().sort(newest).forEach(x => {
+      const row = document.createElement('div');
+      row.className = 'bizLine';
+      row.title = boxLabel(x.b, x.i);
+      row.onclick = () => openApp(x.b.id); // click a line to open its card
+      const text = document.createElement('div');
+      text.className = 'bizText';
+      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(x.e.note || '', 'bizNote'));
+      if (x.e.item) text.appendChild(cell(itemLabel(x.e.item), 'itemChip'));
+      text.appendChild(cell(x.e.date || '', 'bizDate'));
+      const amt = document.createElement('strong');
+      amt.className = part[3] ? 'income' : 'personal';
+      amt.textContent = (part[3] ? '+' : '-') + x.e.amount.toFixed(2);
+      row.append(text, amt);
+      box.appendChild(row);
+    });
+  });
+  const left = document.createElement('div');
+  left.className = 'periodRow totalRow bizTotal';
+  left.append(cell(t.colLeft, 'period'), cell((tIn - tOut).toFixed(2)));
+  box.appendChild(left);
+}
 function renderSummaries() {
   const t = T();
+  renderBusiness();
   document.getElementById('jobDayBtn').classList.toggle('active', jobView === 'day');
   document.getElementById('jobWeekBtn').classList.toggle('active', jobView === 'week');
   document.getElementById('jobMonthBtn').classList.toggle('active', jobView === 'month');
@@ -2682,12 +2799,13 @@ function loadBackupFile(event) {
 
 // Job summary and history start as closed bars. Clicking one opens it (and closes the other);
 // while one is open the small boxes are drawn smaller to make room.
-let openPanel = null; // null, 'summary' or 'history'
+let openPanel = null; // null, 'business', 'summary' or 'history'
 function togglePanel(which) {
   openPanel = openPanel === which ? null : which;
   applyPanels();
 }
 function applyPanels() {
+  document.getElementById('businessBox').classList.toggle('closed', openPanel !== 'business');
   document.getElementById('jobSummary').classList.toggle('closed', openPanel !== 'summary');
   document.getElementById('historyBox').classList.toggle('closed', openPanel !== 'history');
   document.body.classList.toggle('compactBoxes', openPanel !== null);
@@ -2713,6 +2831,7 @@ function resetPageState() {
   openSummaryRows.clear();
   jobView = 'week';
   personalView = 'week';
+  personalOpen = null; // the personal page opens with only its three cards
   document.getElementById('bm').style.display = 'none';
   document.getElementById('fileMsg').textContent = '';
   document.getElementById('homeMicMsg').textContent = '';

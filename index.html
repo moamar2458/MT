@@ -486,7 +486,9 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 
 /* עסק: a line like "סיכום העבודה", above it */
 #businessRow { display: flex; margin: 4px 0 8px 0; }
-#businessBox { border: 1px solid var(--orangeLine); }
+#businessBox { border: 1px solid var(--blueLine); background: var(--blueBg); }
+.businessColor { color: var(--blueText); }
+#businessBox .periodRow.totalRow.bizTotal { background: var(--surface); color: var(--blueText); }
 .panel.closed #businessList, .panel.closed #clearHistoryBtn { display: none; }
 .clearHistoryBtn { align-self: center; margin-top: 10px; flex-shrink: 0; color: var(--redText); border-color: var(--redLine); background: var(--redBg); }
 .clearHistoryBtn:hover { background: var(--redBg); color: var(--red); border-color: var(--red); }
@@ -696,13 +698,6 @@ html[dir=ltr] .jobBody .total { text-align: start; }
   </div>
 </div>
 <div id="middleArea">
-<!-- Business: all the money in and all the spending of every card -->
-<div id="businessRow">
-  <div class="summaryBox panel closed" id="businessBox">
-    <h2 class="sideTitle jobColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
-    <div class="summaryList" id="businessList"></div>
-  </div>
-</div>
 <div id="summaryRow">
   <div class="summaryBox panel closed" id="jobSummary">
     <h2 class="sideTitle jobColor panelTitle" data-t="jobSummaryTitle" onclick="togglePanel('summary')"></h2>
@@ -713,6 +708,13 @@ html[dir=ltr] .jobBody .total { text-align: start; }
       <button id="jobNameBtn" class="viewTab" onclick="setJobView('name')" data-t="byName"></button>
     </div>
     <div class="summaryList" id="jobSummaryList"></div>
+  </div>
+</div>
+<!-- Business (עסק): under "סיכום העבודה", in blue so the two lines look different -->
+<div id="businessRow">
+  <div class="summaryBox panel closed" id="businessBox">
+    <h2 class="sideTitle businessColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
+    <div class="summaryList" id="businessList"></div>
   </div>
 </div>
 <div id="historyBox" class="panel closed">

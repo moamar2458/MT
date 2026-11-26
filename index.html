@@ -275,7 +275,11 @@ h1 { font-weight: 800; font-size: 24px; letter-spacing: -0.3px; }
 
 /* Corner buttons */
 .langBtn, #toFront { height: 44px; min-width: 44px; padding: 0 14px !important; border-radius: 22px !important; border: 1px solid var(--line) !important; background: var(--surface) !important; color: var(--text) !important; font-family: var(--num); font-size: 15px !important; display: flex; align-items: center; justify-content: center; }
-#toFront { font-size: 20px !important; }
+/* Back button (top right on every page): red, a bit wider, with the back symbol */
+#toFront { min-width: 64px; padding: 0 18px !important; font-size: 24px !important; font-weight: 700; line-height: 1; background: var(--red) !important; border-color: var(--red) !important; color: #1A0B0A !important; box-shadow: 0 4px 14px rgba(255,107,91,0.25); }
+#toFront:hover { background: #FF8072 !important; }
+/* Room at the top of the cards page so the back and language buttons don't cover it */
+#jobSide { margin-top: 60px; }
 #toFront[style*="display: block"], #toFront[style*="display:block"] { display: flex !important; }
 
 /* Start page */
@@ -426,6 +430,34 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 #loadingPage { color: var(--muted); }
 #loadingPage button { background: var(--violet); color: #160F2E; border-radius: 14px; font-weight: 700; }
 #syncMsg { background: var(--redBg); border: 1px solid var(--red); color: var(--redText); border-radius: 14px; padding: 10px; }
+
+/* View buttons: room for "by name" and "by category" */
+.viewTabs { flex-wrap: wrap; }
+.viewTab { flex: 1 1 auto; min-width: 56px; padding: 0 10px; white-space: nowrap; }
+#jobSummaryList .periodRow.byName, .periodRow.byName { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+#jobSummaryList .periodRow.catRow, .periodRow.catRow { grid-template-columns: 1.6fr 1fr; }
+#jobSummaryList .periodRow.byName.clickRow .period { color: var(--orange); }
+#personalList .periodRow .period { color: var(--blueText); }
+
+/* What was bought: a small tag under the words */
+.itemChip { display: inline-block; align-self: flex-start; margin-top: 3px; padding: 2px 9px; border-radius: 10px; background: var(--goldBg); border: 1px solid var(--goldLine); color: #FDE68A; font-size: 12px; font-weight: 500; line-height: 1.5; }
+.perNote .itemChip { display: table; }
+
+/* Items and categories window */
+#itemsOverlay { display: none; position: fixed; inset: 0; background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
+#itemsOverlay.show { display: flex; }
+.itemsDialog { width: 380px; }
+.itemAddRow { display: flex; gap: 8px; }
+.itemAddRow select, .itemRow select { flex: 1; min-width: 0; height: 44px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-family: inherit; font-size: 15px; }
+.itemAddBtn { height: 44px; padding: 0 20px; border: none; border-radius: 14px; background: var(--green); color: #062016; font-weight: 700; font-size: 15px; cursor: pointer; }
+.itemsList { max-height: 300px; }
+.itemCatHead { font-size: 12px; font-weight: 700; color: var(--gold); margin: 8px 2px 0; }
+.itemRow { display: grid; grid-template-columns: 1fr 130px auto; gap: 6px; align-items: center; }
+.itemRow select { height: 40px; font-size: 13px; }
+.itemName { height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface2); color: var(--text); font-size: 15px; text-align: start; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itemName:hover { border-color: var(--gold); }
+.itemsOpenBtn { color: #FDE68A; border-color: var(--goldLine); }
+#personalPage .itemsOpenBtn { display: block; margin: 14px auto 20px; }
 </style>
 </head>
 <body>
@@ -457,7 +489,7 @@ button.edit:hover { background: #2E3344; color: var(--text); }
     <button class="startMic green" id="startGreen"><span class="micIcon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></span><span class="micLabel" data-t="startIncome"></span></button>
   </div>
   <button class="startMic purple" id="startPurple"><span class="micIcon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></span><span class="micLabel" data-t="startNewCard"></span></button>
-  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button><button class="personalBtn" id="personalBtn"><span data-t="personalBtn"></span> <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button></div>
+  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button><button class="personalBtn" id="personalBtn" data-t="personalBtn"></button></div>
 <!-- Personal page: what was said with "אישי" on the red and green mics -->
 <div id="personalPage" style="display:none">
   <h1 data-t="personalPageTitle"></h1>
@@ -466,10 +498,12 @@ button.edit:hover { background: #2E3344; color: var(--text); }
     <button id="perDayBtn" class="viewTab" onclick="setPersonalView('day')" data-t="daily"></button>
     <button id="perWeekBtn" class="viewTab active" onclick="setPersonalView('week')" data-t="weekly"></button>
     <button id="perMonthBtn" class="viewTab" onclick="setPersonalView('month')" data-t="monthly"></button>
+    <button id="perCatBtn" class="viewTab" onclick="setPersonalView('category')" data-t="byCategory"></button>
   </div>
   <div id="personalList"></div>
+  <button class="fileBtn itemsOpenBtn" onclick="openItems()" data-t="itemsBtn"></button>
 </div>
-<button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button>
+<button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><span aria-hidden="true">&#8617;</span></button>
 <!-- The small boxes are made by the script below. -->
 <div id="homeRow">
   <div id="jobSide">
@@ -486,6 +520,8 @@ button.edit:hover { background: #2E3344; color: var(--text); }
       <button id="jobDayBtn" class="viewTab" onclick="setJobView('day')" data-t="daily"></button>
       <button id="jobWeekBtn" class="viewTab active" onclick="setJobView('week')" data-t="weekly"></button>
       <button id="jobMonthBtn" class="viewTab" onclick="setJobView('month')" data-t="monthly"></button>
+      <button id="jobNameBtn" class="viewTab" onclick="setJobView('name')" data-t="byName"></button>
+      <button id="jobCatBtn" class="viewTab" onclick="setJobView('category')" data-t="byCategory"></button>
     </div>
     <div class="summaryList" id="jobSummaryList"></div>
   </div>
@@ -495,12 +531,24 @@ button.edit:hover { background: #2E3344; color: var(--text); }
   <div id="historyList"></div>
 </div>
 </div>
-<div id="fileBar"><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
+<div id="fileBar"><button class="fileBtn itemsOpenBtn" style="grid-column:1/3" onclick="openItems()" data-t="itemsBtn"></button><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
   <button class="fileBtn load" onclick="document.getElementById('fileInput').click()" data-t="loadFile"></button>
   <button class="fileBtn" onclick="backupByEmail()" data-t="backupBtn"></button>
   <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
   <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="loadBackupFile(event)">
   </div><div class="fileMsg" id="fileMsg"></div>
+</div>
+
+<!-- Items and categories: what was bought -->
+<div id="itemsOverlay" onclick="closeItems()">
+  <div class="nameDialog itemsDialog" onclick="event.stopPropagation()">
+    <h3 data-t="itemsTitle"></h3>
+    <div class="nameRow"><input type="text" id="itemInput" maxlength="40" data-p="itemName" onkeydown="if(event.key==='Enter')addItemFromInput()"><button class="nameMic" id="itemMic" aria-label="mic" onclick="sayItem()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button></div>
+    <div class="itemAddRow"><select id="itemCatSel" onchange="newItemCatChanged(this)"></select><button class="itemAddBtn" onclick="addItemFromInput()" data-t="addItem"></button></div>
+    <div class="nameMicMsg" id="itemMsg"></div>
+    <div class="savedList itemsList" id="itemsList"></div>
+    <div class="dialogButtons"><button class="cancelBtn" onclick="closeItems()" data-t="closeBtn"></button></div>
+  </div>
 </div>
 
 <!-- The box that opens to choose or type a name -->
@@ -581,7 +629,7 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -728,29 +776,68 @@ function browserSpeechBlocked() { try { return localStorage.getItem(SR_BLOCKED_K
 function markBrowserSpeechBlocked() { try { localStorage.setItem(SR_BLOCKED_KEY, '1'); } catch (e) { /* ignore */ } }
 let browserSpeechFailed = false; // also kept for this visit, in case storage is not allowed
 
+// The recording that is running now (browser speech), so a second press on the same mic can stop it.
+let activeRec = null;
 function startVoice(btn, msgEl, onText) {
   const t = T();
-  if (SR && !browserSpeechFailed && !browserSpeechBlocked()) {
+  // Pressing the same mic again: stop now and use what was said so far.
+  if (activeRec) {
+    const a = activeRec;
+    if (a.btn === btn) { a.stop(); return; }
+    a.cancel();
+  }
+  if (SR && (!dictation || (!browserSpeechFailed && !browserSpeechBlocked()))) {
     const rec = new SR();
     rec.lang = t.micLang;
-    let got = false;
-    rec.onstart = () => { btn.classList.add('listening'); msgEl.textContent = t.listening; };
-    rec.onend = () => { btn.classList.remove('listening'); };
-    rec.onerror = e => {
+    rec.interimResults = true; // keep what was heard so far, in case the mic is stopped by hand
+    let finished = false, heardSoFar = '';
+    const finish = () => {
+      if (finished) return;
+      finished = true;
       btn.classList.remove('listening');
+      if (activeRec === me) activeRec = null;
+      if (heardSoFar.trim()) onText(heardSoFar.trim());
+      else msgEl.textContent = t.cantHear;
+    };
+    const me = {
+      btn: btn,
+      // rec.stop() makes the browser hand over the last words at once; finish() runs on that result or on the end.
+      stop: () => { msgEl.textContent = t.stopping; try { rec.stop(); } catch (e) { finish(); } },
+      cancel: () => { finished = true; btn.classList.remove('listening'); if (activeRec === me) activeRec = null; try { rec.abort(); } catch (e) { /* ignore */ } }
+    };
+    rec.onstart = () => { btn.classList.add('listening'); msgEl.textContent = t.listening; };
+    rec.onend = finish;
+    rec.onerror = e => {
       const blocked = ['not-allowed', 'service-not-allowed', 'audio-capture', 'network'].indexOf(e.error) >= 0;
       if (blocked && dictation) {
+        finished = true;
+        btn.classList.remove('listening');
+        if (activeRec === me) activeRec = null;
         browserSpeechFailed = true;
         markBrowserSpeechBlocked();
         msgEl.textContent = t.pressAgain;
-      } else if (!got) msgEl.textContent = t.cantHear;
+      } else if (blocked && e.error === 'not-allowed') {
+        finished = true;
+        btn.classList.remove('listening');
+        if (activeRec === me) activeRec = null;
+        msgEl.textContent = t.micBlocked;
+      }
+      // Other errors: onend follows and finish() uses whatever was heard.
     };
-    rec.onresult = e => { got = true; onText(e.results[0][0].transcript); };
-    try { rec.start(); return; } catch (err) { browserSpeechFailed = true; }
+    rec.onresult = e => {
+      let said = '', isFinal = false;
+      for (let i = 0; i < e.results.length; i++) { said += e.results[i][0].transcript; if (e.results[i].isFinal) isFinal = true; }
+      heardSoFar = said;
+      if (said.trim()) msgEl.textContent = t.listening + ' "' + said.trim() + '"';
+      if (isFinal) finish();
+    };
+    activeRec = me;
+    try { rec.start(); return; } catch (err) { activeRec = null; browserSpeechFailed = true; if (!dictation) { msgEl.textContent = t.noVoice; return; } }
   }
   if (dictation) {
-    if (dictation.active()) { dictation.stop().catch(() => {}); return; }
+    if (dictation.active()) { msgEl.textContent = t.stopping; dictation.stop().catch(() => {}); return; }
     let text = '';
+    let lastPartial = '';
     let timer = null;
     const offs = [];
     const stopIn = ms => { clearTimeout(timer); timer = setTimeout(() => dictation.stop().catch(() => {}), ms); };
@@ -760,13 +847,15 @@ function startVoice(btn, msgEl, onText) {
       else if (code === 'unavailable') msgEl.textContent = t.noVoice;
       else if (code !== 'dismissed' && code !== 'stopped' && code !== 'viewer_stopped' && code !== 'hidden') msgEl.textContent = t.cantHear;
     };
-    offs.push(dictation.onPartial(e => { if (e.text) { clearTimeout(timer); msgEl.textContent = t.listening + ' "' + e.text + '"'; } }));
-    offs.push(dictation.onFinal(e => { text += e.text; stopIn(1500); }));
+    offs.push(dictation.onPartial(e => { if (e.text) { clearTimeout(timer); lastPartial = e.text; msgEl.textContent = t.listening + ' "' + (text + ' ' + e.text).trim() + '"'; } }));
+    offs.push(dictation.onFinal(e => { text += (text ? ' ' : '') + e.text; lastPartial = ''; stopIn(1500); }));
     offs.push(dictation.onState(e => {
       if (e.state === 'listening') { btn.classList.add('listening'); msgEl.textContent = t.listening; stopIn(8000); }
       if (e.state !== 'idle') return;
       done();
-      if (text.trim()) onText(text.trim());
+      // Stopped by a second press: the words not yet final still count.
+      const said = (text + ' ' + lastPartial).trim();
+      if (said) onText(said);
       else if (e.reason === 'stopped' || e.reason === 'viewer_stopped') msgEl.textContent = t.cantHear;
       else explain(e.reason);
     }));
@@ -774,14 +863,7 @@ function startVoice(btn, msgEl, onText) {
     dictation.start({ language: lang }).catch(err => { if (!dictation.active() && offs.length) { done(); explain(err && err.code); } });
     return;
   }
-  if (!SR) { msgEl.textContent = t.noVoice; return; }
-  const rec = new SR();
-  rec.lang = t.micLang;
-  rec.onstart = () => { btn.classList.add('listening'); msgEl.textContent = t.listening; };
-  rec.onend = () => { btn.classList.remove('listening'); };
-  rec.onerror = () => { btn.classList.remove('listening'); msgEl.textContent = t.cantHear; };
-  rec.onresult = e => onText(e.results[0][0].transcript);
-  rec.start();
+  msgEl.textContent = t.noVoice;
 }
 // ===== End of the website part =====
 
@@ -890,9 +972,32 @@ const TEXT = {
     personalEmpty: 'עדיין אין רישומים אישיים. במיקרופון האדום או הירוק אמרו סכום ואחריו "אישי", למשל "מאה אישי".',
     newCardBtn: '+ כרטיס חדש',
     newCardAdded: 'נפתח כרטיס חדש: ',
-    startHint: 'אדום וירוק: אמרו סכום ושם, למשל "מאה לדוד", או סכום ו"אישי". סגול: אמרו שם לכרטיס חדש.',
+    startHint: 'אדום וירוק: אמרו סכום, שם ומה קניתם, למשל "דוד 50 שקל צבע", או סכום ו"אישי". סגול: אמרו שם לכרטיס חדש. לחיצה נוספת על המיקרופון עוצרת את ההקלטה.',
     syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
     loadError: 'לא הצלחתי לטעון את הנתונים. בדקו את החיבור לאינטרנט.',
+    stopping: 'עוצר...',
+    back: 'חזרה',
+    byName: 'לפי שם',
+    byCategory: 'לפי קטגוריה',
+    itemsBtn: 'פריטים וקטגוריות',
+    itemsTitle: 'פריטים וקטגוריות',
+    itemName: 'שם הפריט, למשל צבע',
+    addItem: 'הוספה',
+    itemAdded: 'נוסף לרשימה: ',
+    itemExists: 'הפריט כבר ברשימה.',
+    itemEmpty: 'הקלידו או אמרו שם של פריט.',
+    noItems: 'עדיין אין פריטים. הוסיפו פריט למעלה.',
+    renameItem: 'שם חדש לפריט:',
+    removeItemSure: 'למחוק את הפריט מהרשימה? הוצאות שכבר נרשמו יישארו.',
+    newCat: '+ קטגוריה חדשה...',
+    newCatPrompt: 'שם הקטגוריה החדשה:',
+    noCat: 'ללא קטגוריה',
+    noItem: 'ללא פריט',
+    category: 'קטגוריה',
+    colItem: 'פריט',
+    colAmount: 'סכום',
+    closeBtn: 'סגירה',
+    sayItemHint: 'הקלידו או אמרו פריט. אפשר לומר גם קטגוריה, למשל "סיליקון חומרים".',
     tryAgain: 'נסו שוב',
     kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
     micLang: 'he-IL',
@@ -1002,9 +1107,32 @@ const TEXT = {
     personalEmpty: 'No personal entries yet. On the red or green mic, say an amount and then "personal", for example "100 personal".',
     newCardBtn: '+ New card',
     newCardAdded: 'New card opened: ',
-    startHint: 'Red and green: say an amount and a name, for example "100 David", or an amount and "personal". Purple: say a name for a new card.',
+    startHint: 'Red and green: say an amount, a name and what you bought, for example "David 50 shekel paint", or an amount and "personal". Purple: say a name for a new card. Press the mic again to stop recording.',
     syncError: 'Saving did not work. Check your internet connection, trying again...',
     loadError: 'Could not load your data. Check your internet connection.',
+    stopping: 'Stopping...',
+    back: 'Back',
+    byName: 'By name',
+    byCategory: 'By category',
+    itemsBtn: 'Items and categories',
+    itemsTitle: 'Items and categories',
+    itemName: 'Item name, for example paint',
+    addItem: 'Add',
+    itemAdded: 'Added to the list: ',
+    itemExists: 'That item is already in the list.',
+    itemEmpty: 'Type or say the name of an item.',
+    noItems: 'No items yet. Add one above.',
+    renameItem: 'New name for the item:',
+    removeItemSure: 'Remove this item from the list? Spending already saved stays.',
+    newCat: '+ New category...',
+    newCatPrompt: 'Name of the new category:',
+    noCat: 'No category',
+    noItem: 'No item',
+    category: 'Category',
+    colItem: 'Item',
+    colAmount: 'Amount',
+    closeBtn: 'Close',
+    sayItemHint: 'Type or say an item. You can also say its category, for example "silicone materials".',
     tryAgain: 'Try again',
     kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
     micLang: 'en-GB',
@@ -1061,6 +1189,8 @@ function applyLang() {
   document.getElementById('langBtn').textContent = t.button;
   document.getElementById('arrowJob').title = t.jobSpending;
   document.getElementById('titleEdit').title = t.rename;
+  document.getElementById('toFront').title = t.back;
+  document.getElementById('toFront').setAttribute('aria-label', t.back);
   heard.textContent = '';
   renderHome();
   renderPersonal();
@@ -1096,11 +1226,303 @@ function saysPersonal(sentence) {
   const words = String(sentence || '').toLowerCase().replace(/[.,!?;:"'()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
   return words.some(w => PERSONAL_WORDS.some(re => re.test(w)));
 }
-function addPersonalEntry(kind, amount, note) {
+function addPersonalEntry(kind, amount, note, item) {
   const now = new Date();
-  personal.unshift({ id: 'p' + Date.now(), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) });
+  const entry = { id: 'p' + Date.now(), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
+  if (item && kind !== 'income') entry.item = item;
+  personal.unshift(entry);
   savePersonal();
   renderPersonalPage();
+}
+
+// ---- What was bought: a list of items, each in a category (חשמל, אוכל, חומרים...) ----
+// Saved as money_items [{ name, cat }] and money_cats [names]. A spending entry keeps the item's name in "item";
+// its category is looked up in the list, so changing an item's category also changes the summaries.
+const SEED_ITEMS = {
+  he: { cats: ['חומרים', 'חשמל', 'אוכל'], items: [['צבע', 'חומרים'], ['מברשת צבע', 'חומרים'], ['סיליקון', 'חומרים'], ['שפכטל', 'חומרים']] },
+  en: { cats: ['Materials', 'Electricity', 'Food'], items: [['Paint', 'Materials'], ['Paint brush', 'Materials'], ['Silicone', 'Materials'], ['Filler', 'Materials']] }
+};
+function getItems() {
+  try { const l = JSON.parse(LS.getItem('money_items') || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.name === 'string' && x.name) : []; } catch (e) { return []; }
+}
+function saveItems(list) { LS.setItem('money_items', JSON.stringify(list)); }
+function getCats() {
+  let l = [];
+  try { l = JSON.parse(LS.getItem('money_cats') || '[]'); } catch (e) { l = []; }
+  if (!Array.isArray(l)) l = [];
+  l = l.filter(c => typeof c === 'string' && c);
+  getItems().forEach(it => { if (it.cat && l.indexOf(it.cat) < 0) l.push(it.cat); });
+  return l;
+}
+function saveCats(list) { LS.setItem('money_cats', JSON.stringify(list)); }
+// First time only: start the list with a few work materials. They can be changed or removed.
+function seedItems() {
+  if (LS.getItem('money_items') !== null) return;
+  const s = SEED_ITEMS[lang] || SEED_ITEMS.he;
+  saveCats(s.cats.slice());
+  saveItems(s.items.map(x => ({ name: x[0], cat: x[1] })));
+}
+function normWord(w) {
+  return String(w || '').toLowerCase().replace(/[֑-ׇ"'׳״]/g, '')
+    .replace(/ך/g, 'כ').replace(/ם/g, 'מ').replace(/ן/g, 'נ').replace(/ף/g, 'פ').replace(/ץ/g, 'צ');
+}
+function normKey(text) { return String(text || '').split(/\s+/).map(normWord).join(''); }
+function itemCategory(name) {
+  if (!name) return '';
+  const n = normKey(name);
+  const it = getItems().find(x => normKey(x.name) === n);
+  return it ? (it.cat || '') : '';
+}
+function editDistance(a, b) {
+  const row = [];
+  for (let j = 0; j <= b.length; j++) row[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const keep = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = keep;
+    }
+  }
+  return row[b.length];
+}
+// Words that are not the item: "שקל", "ש״ח", "על"...
+const FILLER_WORDS = ['שקל', 'שקלים', 'שח', 'ש"ח', 'ש״ח', '₪', 'nis', 'ils', 'shekel', 'shekels', 'sheqel', 'על', 'של', 'for', 'of', 'on', 'את'];
+function sentenceWords(sentence) {
+  return String(sentence || '').toLowerCase().replace(/[.,!?;:()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
+}
+// Finds the item from the list that sounds closest to words in what was said.
+// Returns { name, used: [the word positions it took] }, or null when nothing is close enough.
+function findItem(sentence) {
+  const words = sentenceWords(sentence);
+  let best = null;
+  getItems().forEach(it => {
+    const parts = it.name.split(/\s+/).filter(Boolean).map(normWord);
+    const k = parts.length;
+    const target = parts.join('');
+    if (!k || !target) return;
+    for (let i = 0; i + k <= words.length; i++) {
+      const win = words.slice(i, i + k).map(normWord);
+      if (win.some(w => /\d/.test(w))) continue;
+      const tries = [win.join('')];
+      // Small Hebrew words stuck to the front: ו ל ב ה ש ("לצבע", "והסיליקון")
+      const m = win[0].match(/^[ולבהש]{1,2}/);
+      if (m && win[0].length - m[0].length >= 2) {
+        tries.push(win[0].slice(1) + win.slice(1).join(''));
+        if (m[0].length === 2) tries.push(win[0].slice(2) + win.slice(1).join(''));
+      }
+      let score = 0;
+      tries.forEach(tr => {
+        let s = 0;
+        if (tr === target) s = 1;
+        else if (Math.max(tr.length, target.length) >= 4) s = 1 - editDistance(tr, target) / Math.max(tr.length, target.length);
+        const sk = soundKey(target);
+        if (s < 0.85 && target.length >= 3 && sk.length >= 2 && soundKey(tr) === sk) s = 0.85;
+        if (s > score) score = s;
+      });
+      if (score < 0.75) continue;
+      const used = [];
+      for (let u = i; u < i + k; u++) used.push(u);
+      const better = !best || score > best.score || (score === best.score && (k > best.k || (k === best.k && it.name.length > best.name.length)));
+      if (better) best = { name: it.name, score: score, k: k, used: used };
+    }
+  });
+  return best;
+}
+// What was said, without the item's words (so the card name can be found in the rest).
+function withoutItem(sentence, match) {
+  if (!match) return sentence;
+  return sentenceWords(sentence).filter((w, i) => match.used.indexOf(i) < 0).join(' ');
+}
+function itemLabel(item) {
+  if (!item) return '';
+  const cat = itemCategory(item);
+  return cat ? item + ' · ' + cat : item;
+}
+
+// The items window: add an item (type it or say it), set its category, rename it or remove it.
+function openItems() {
+  const sel = document.getElementById('itemCatSel');
+  fillCatSelect(sel, sel.value && sel.value !== '__new__' ? sel.value : (getCats()[0] || ''));
+  sel.dataset.prev = sel.value;
+  document.getElementById('itemMsg').textContent = T().sayItemHint;
+  drawItems();
+  document.getElementById('itemsOverlay').classList.add('show');
+  document.getElementById('itemInput').focus();
+}
+function closeItems() {
+  document.getElementById('itemsOverlay').classList.remove('show');
+  if (activeRec) activeRec.cancel();
+  if (dictation && dictation.active()) dictation.stop().catch(() => {});
+}
+function fillCatSelect(sel, value) {
+  const t = T();
+  sel.innerHTML = '';
+  const add = (v, text) => { const o = document.createElement('option'); o.value = v; o.textContent = text; sel.appendChild(o); };
+  add('', t.noCat);
+  getCats().forEach(c => add(c, c));
+  add('__new__', t.newCat);
+  sel.value = value || '';
+}
+// A category menu changed: "new category" asks for the name first.
+async function pickCat(sel, current, onSet) {
+  if (sel.value !== '__new__') { onSet(sel.value); return; }
+  const answer = await askText(T().newCatPrompt, '');
+  const clean = String(answer || '').trim();
+  if (!clean) { sel.value = current || ''; return; }
+  const cats = getCats();
+  if (cats.indexOf(clean) < 0) { cats.push(clean); saveCats(cats); }
+  onSet(clean);
+}
+function newItemCatChanged(sel) {
+  pickCat(sel, sel.dataset.prev, v => { fillCatSelect(sel, v); sel.dataset.prev = v; });
+}
+function itemsChanged() {
+  if (!booted) return;
+  renderSummaries();
+  renderPersonalPage();
+  if (currentId) render();
+}
+function addItemFromInput() {
+  const t = T();
+  const input = document.getElementById('itemInput');
+  const msg = document.getElementById('itemMsg');
+  const name = input.value.trim().replace(/[.!?,]+$/, '');
+  if (!name) { msg.textContent = t.itemEmpty; return; }
+  const cat = document.getElementById('itemCatSel').value;
+  const list = getItems();
+  const have = list.find(x => normKey(x.name) === normKey(name));
+  if (have) {
+    if (cat && cat !== '__new__') { have.cat = cat; saveItems(list); }
+    msg.textContent = t.itemExists;
+  } else {
+    list.push({ name: name, cat: cat === '__new__' ? '' : cat });
+    saveItems(list);
+    msg.textContent = t.itemAdded + name;
+  }
+  input.value = '';
+  input.focus();
+  drawItems();
+  itemsChanged();
+}
+// Say the item (and if you like its category, "סיליקון חומרים"); it is written into the box to check, then press Add.
+function sayItem() {
+  const msg = document.getElementById('itemMsg');
+  startVoice(document.getElementById('itemMic'), msg, text => {
+    let said = String(text || '').trim().replace(/[.!?,]+$/, '');
+    const sel = document.getElementById('itemCatSel');
+    const cat = getCats().slice().sort((a, b) => b.length - a.length).find(c => said !== c && said.indexOf(c) >= 0);
+    if (cat) { said = said.replace(cat, ' ').replace(/\s+/g, ' ').trim(); fillCatSelect(sel, cat); sel.dataset.prev = cat; }
+    document.getElementById('itemInput').value = said.slice(0, 40);
+    msg.textContent = '';
+  });
+}
+function drawItems() {
+  const t = T();
+  const box = document.getElementById('itemsList');
+  box.innerHTML = '';
+  const list = getItems();
+  if (!list.length) { box.appendChild(cell(t.noItems, 'savedTitle')); return; }
+  const groups = {};
+  list.forEach(it => { const c = it.cat || ''; (groups[c] = groups[c] || []).push(it); });
+  Object.keys(groups).sort((a, b) => (a === '') - (b === '') || a.localeCompare(b)).forEach(c => {
+    box.appendChild(cell(c || t.noCat, 'itemCatHead'));
+    groups[c].sort((a, b) => a.name.localeCompare(b.name)).forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'itemRow';
+      const name = document.createElement('button');
+      name.className = 'itemName';
+      name.title = t.renameItem;
+      name.textContent = it.name;
+      name.onclick = () => renameItem(it.name);
+      const sel = document.createElement('select');
+      sel.className = 'itemCat';
+      sel.setAttribute('aria-label', t.category);
+      fillCatSelect(sel, it.cat || '');
+      sel.onchange = () => pickCat(sel, it.cat, v => {
+        const all = getItems();
+        const x = all.find(y => y.name === it.name);
+        if (x) { x.cat = v; saveItems(all); }
+        drawItems();
+        itemsChanged();
+      });
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.title = t.removeBox;
+      del.setAttribute('aria-label', t.removeBox);
+      del.textContent = '✕';
+      del.onclick = async () => {
+        if (!(await askConfirm(T().removeItemSure))) return;
+        saveItems(getItems().filter(y => y.name !== it.name));
+        drawItems();
+        itemsChanged();
+      };
+      row.append(name, sel, del);
+      box.appendChild(row);
+    });
+  });
+}
+async function renameItem(oldName) {
+  const answer = await askText(T().renameItem, oldName);
+  const clean = String(answer || '').trim();
+  if (!clean || clean === oldName) return;
+  const all = getItems();
+  if (all.some(y => y.name !== oldName && normKey(y.name) === normKey(clean))) { document.getElementById('itemMsg').textContent = T().itemExists; return; }
+  const x = all.find(y => y.name === oldName);
+  if (x) { x.name = clean; saveItems(all); }
+  // Entries that were saved with the old name follow the new one.
+  let changed = false;
+  boxes.forEach(b => (b.entries || []).forEach(e => { if (e.item === oldName) { e.item = clean; changed = true; } }));
+  if (changed) saveBoxes();
+  let pChanged = false;
+  personal.forEach(p => { if (p.item === oldName) { p.item = clean; pChanged = true; } });
+  if (pChanged) savePersonal();
+  drawItems();
+  itemsChanged();
+  renderHome();
+}
+
+// Spending grouped by category, and by item inside each category. Used by both summaries.
+function renderCategoryBreakdown(box, entries, foldPrefix, redraw, emptyText) {
+  const t = T();
+  if (!entries.length) { box.appendChild(cell(emptyText, 'savedTitle')); return; }
+  const cats = {};
+  let grand = 0;
+  entries.forEach(e => {
+    const item = e.item || '';
+    const cat = (item && itemCategory(item)) || '';
+    const c = cats[cat] = cats[cat] || { total: 0, items: {} };
+    const key = item || t.noItem;
+    c.items[key] = (c.items[key] || 0) + e.amount;
+    c.total += e.amount;
+    grand += e.amount;
+  });
+  const head = document.createElement('div');
+  head.className = 'periodRow head catRow';
+  head.append(cell(t.colItem), cell(t.colAmount));
+  box.appendChild(head);
+  Object.keys(cats).sort((a, b) => (a === '') - (b === '') || cats[b].total - cats[a].total).forEach(cat => {
+    const foldKey = foldPrefix + '|cat|' + cat;
+    const open = periodFolds.has(foldKey) ? periodFolds.get(foldKey) : true;
+    const title = document.createElement('div');
+    title.className = 'periodTitle foldTitle';
+    title.append(cell((open ? '▾ ' : '▸ ') + (cat || t.noCat)), cell(cats[cat].total.toFixed(2), 'foldSum'));
+    title.onclick = () => { periodFolds.set(foldKey, !open); redraw(); };
+    box.appendChild(title);
+    if (!open) return;
+    const items = cats[cat].items;
+    Object.keys(items).sort((a, b) => items[b] - items[a]).forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'periodRow catRow';
+      row.append(cell(name, 'period'), cell(items[name].toFixed(2)));
+      box.appendChild(row);
+    });
+  });
+  const total = document.createElement('div');
+  total.className = 'periodRow catRow totalRow';
+  total.append(cell(t.totalLabel, 'period'), cell(grand.toFixed(2)));
+  box.appendChild(total);
 }
 function openPersonalPage() {
   document.getElementById('startPage').style.display = 'none';
@@ -1114,6 +1536,7 @@ function renderPersonalPage() {
   document.getElementById('perDayBtn').classList.toggle('active', personalView === 'day');
   document.getElementById('perWeekBtn').classList.toggle('active', personalView === 'week');
   document.getElementById('perMonthBtn').classList.toggle('active', personalView === 'month');
+  document.getElementById('perCatBtn').classList.toggle('active', personalView === 'category');
   const sum = list => {
     const s = { income: 0, out: 0 };
     list.forEach(p => { if (p.kind === 'income') s.income += p.amount; else s.out += p.amount; });
@@ -1136,6 +1559,11 @@ function renderPersonalPage() {
   const box = document.getElementById('personalList');
   box.innerHTML = '';
   if (personal.length === 0) { box.appendChild(cell(t.personalEmpty, 'savedTitle')); return; }
+  // By category: how much personal spending went on each category (חשמל, אוכל...).
+  if (personalView === 'category') {
+    renderCategoryBreakdown(box, personal.filter(p => p.kind !== 'income'), 'personal', renderPersonalPage, t.noPersonal);
+    return;
+  }
   const periods = {};
   personal.forEach(p => {
     const d = entryDate(p);
@@ -1177,7 +1605,9 @@ function renderPersonalPage() {
       del.className = 'del';
       del.textContent = '\u2715';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
-      line.append(cell(p.date || '', 'perDate'), cell(p.note || '', 'perNote'), amt, edit, del);
+      const noteCell = cell(p.note || '', 'perNote');
+      if (p.item) noteCell.appendChild(cell(itemLabel(p.item), 'itemChip'));
+      line.append(cell(p.date || '', 'perDate'), noteCell, amt, edit, del);
       box.appendChild(line);
     });
     const s = sum(periods[k]);
@@ -1239,7 +1669,43 @@ function renderSummaries() {
   document.getElementById('jobDayBtn').classList.toggle('active', jobView === 'day');
   document.getElementById('jobWeekBtn').classList.toggle('active', jobView === 'week');
   document.getElementById('jobMonthBtn').classList.toggle('active', jobView === 'month');
+  document.getElementById('jobNameBtn').classList.toggle('active', jobView === 'name');
+  document.getElementById('jobCatBtn').classList.toggle('active', jobView === 'category');
   // (the personal spending summary was removed)
+
+  // By name: each card on its own line with its totals. By category: job spending per category and item.
+  if (jobView === 'name' || jobView === 'category') {
+    const list = document.getElementById('jobSummaryList');
+    list.innerHTML = '';
+    if (jobView === 'category') {
+      const spent = [];
+      boxes.forEach(b => (b.entries || []).forEach(e => { if (e.kind === 'job') spent.push(e); }));
+      renderCategoryBreakdown(list, spent, 'job', renderSummaries, t.noPeriods);
+      return;
+    }
+    if (!boxes.length) { list.appendChild(cell(t.noPeriods, 'savedTitle')); return; }
+    const head = document.createElement('div');
+    head.className = 'periodRow head byName';
+    head.append(cell(''), cell(t.colIn), cell(t.colJob), cell(t.colLeft));
+    list.appendChild(head);
+    let ti = 0, tj = 0;
+    boxes.forEach((b, i) => {
+      const tt = boxTotals(b);
+      ti += tt.income;
+      tj += tt.job;
+      const row = document.createElement('div');
+      row.className = 'periodRow byName clickRow';
+      row.title = b.finished ? T().finishedOn + b.finished : '';
+      row.append(cell(boxLabel(b, i) + (b.finished ? ' ✓' : ''), 'period'), cell(tt.income.toFixed(2)), cell(tt.job.toFixed(2)), cell((tt.income - tt.job).toFixed(2)));
+      row.onclick = () => openApp(b.id);
+      list.appendChild(row);
+    });
+    const total = document.createElement('div');
+    total.className = 'periodRow byName totalRow';
+    total.append(cell(t.totalLabel, 'period'), cell(ti.toFixed(2)), cell(tj.toFixed(2)), cell((ti - tj).toFixed(2)));
+    list.appendChild(total);
+    return;
+  }
 
   // Job: every box on its own line, then the total of all the boxes
   const jobPeriods = {};
@@ -1297,7 +1763,7 @@ function renderSummaries() {
           r.items.slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(e => {
             const line = document.createElement('div');
             line.className = 'detailLine';
-            line.append(cell(e.date || ''), cell(e.note || ''), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            line.append(cell(e.date || ''), cell((e.note || '') + (e.item ? ' · ' + itemLabel(e.item) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
             detail.appendChild(line);
           });
           // Last line: the total of this card's job spending in this period.
@@ -1723,7 +2189,9 @@ function makeRow(e, i) {
   const date = document.createElement('span');
   date.className = 'entryDate';
   date.textContent = e.date || '';
-  text.append(note, date);
+  text.append(note);
+  if (e.item) text.appendChild(cell(itemLabel(e.item), 'itemChip'));
+  text.append(date);
   const amt = document.createElement('strong');
   amt.className = e.kind === 'job' ? 'personal' : e.kind;
   amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
@@ -1777,8 +2245,10 @@ function changePct() {
   render();
 }
 
-function addEntry(kind, amount, note) {
-  cur().entries.unshift({ kind: kind, amount: amount, note: note, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+function addEntry(kind, amount, note, item) {
+  const entry = { kind: kind, amount: amount, note: note, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+  if (item && kind === 'job') entry.item = item;
+  cur().entries.unshift(entry);
   saveBoxes();
   render();
 }
@@ -1790,8 +2260,9 @@ function handleText(sentence) {
   const t = T();
   const amount = findAmount(sentence);
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
-  addEntry('job', amount, sentence);
-  heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + ' (' + t.heardWord + ': "' + sentence + '")';
+  const item = findItem(sentence);
+  addEntry('job', amount, sentence, item ? item.name : '');
+  heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
 }
 
 // Adding money in from the Money coming in square.
@@ -1877,7 +2348,7 @@ async function doRestoreBackup(box) {
 
 // ---- Backup to a file, and load it back without doubles ----
 async function saveBackupFile() {
-  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames() }, null, 1);
+  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames(), items: getItems(), cats: getCats() }, null, 1);
   const blob = new Blob([data], { type: 'application/json' });
   const stamp = new Date().toISOString().slice(0, 10);
   const fileName = 'money-tracker-backup-' + stamp + '.json';
@@ -1961,6 +2432,13 @@ function loadBackupFile(event) {
       added++;
     });
     if (Array.isArray(data.names)) data.names.forEach(n => { if (typeof n === 'string' && n) rememberName(n); });
+    // Items and categories in the file are added to the list, skipping ones that are already there.
+    if (Array.isArray(data.items)) {
+      const list = getItems();
+      data.items.forEach(it => { if (it && typeof it.name === 'string' && it.name && !list.some(x => normKey(x.name) === normKey(it.name))) list.push({ name: it.name, cat: typeof it.cat === 'string' ? it.cat : '' }); });
+      saveItems(list);
+    }
+    if (Array.isArray(data.cats)) { const cats = getCats(); data.cats.forEach(c => { if (typeof c === 'string' && c && cats.indexOf(c) < 0) cats.push(c); }); saveCats(cats); }
     saveBoxes();
     renderHome();
     document.getElementById('fileMsg').textContent = T().fileResult.replace('{added}', added).replace('{skipped}', skipped);
@@ -2025,11 +2503,11 @@ function soundKey(text) {
   return s.replace(/(.)\1+/g, '$1');
 }
 // The "where should this go?" window: personal first, then every open card.
-function chooseTarget(sentence, amount, kind, msg) {
+function chooseTarget(sentence, amount, kind, msg, item) {
   const t = T();
   const ov = document.getElementById('pickOverlay');
   const list = document.getElementById('pickList');
-  const kindText = kind === 'income' ? t.kinds.income : t.kinds.job;
+  const kindText = (kind === 'income' ? t.kinds.income : t.kinds.job) + (item ? ' · ' + item : '');
   document.getElementById('pickText').textContent = t.pickWhere(sentence, amount.toFixed(2), kindText);
   list.innerHTML = '';
   const close = () => ov.classList.remove('show');
@@ -2038,8 +2516,8 @@ function chooseTarget(sentence, amount, kind, msg) {
   personalBtn.textContent = t.personalBtn;
   personalBtn.onclick = () => {
     close();
-    addPersonalEntry(kind, amount, sentence);
-    msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind);
+    addPersonalEntry(kind, amount, sentence, item);
+    msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind) + (item && kind !== 'income' ? ' · ' + item : '');
   };
   list.appendChild(personalBtn);
   boxes.forEach((b, i) => {
@@ -2048,11 +2526,13 @@ function chooseTarget(sentence, amount, kind, msg) {
     btn.textContent = boxLabel(b, i);
     btn.onclick = () => {
       close();
-      b.entries.unshift({ kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+      const entry = { kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+      if (item && kind === 'job') entry.item = item;
+      b.entries.unshift(entry);
       saveBoxes();
       renderHome();
       renderSummaries();
-      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + ' (' + boxLabel(b, i) + ')';
+      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (entry.item ? ' · ' + entry.item : '') + ' (' + boxLabel(b, i) + ')';
     };
     list.appendChild(btn);
   });
@@ -2069,15 +2549,18 @@ function handleHomeText(sentence, kind, msgEl) {
   sentence = (sentence || '').trim();
   const amount = findAmount(sentence);
   if (amount === null) { msg.textContent = T().heardWord + ' "' + sentence + '" ' + T().noAmount; return; }
+  // Spending can also say what it was for ("דוד 50 שקל צבע"): find the closest item from the list.
+  const itemMatch = kind === 'income' ? null : findItem(sentence);
+  const item = itemMatch ? itemMatch.name : '';
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
-    addPersonalEntry(kind, amount, sentence);
-    msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind);
+    addPersonalEntry(kind, amount, sentence, item);
+    msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');
     return;
   }
-  // Take the number away and keep the rest as the name.
-  let rest = sentence.replace(/\d+(?:[.,]\d+)?/g, ' ').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ');
-  rest = rest.split(/\s+/).filter(w => w && !(w.replace(/^ו/, '') in NUMBER_WORDS) && !(w in NUMBER_WORDS) && w !== 'hundred' && w !== 'thousand' && w !== 'מאה' && w !== 'מאות' && w !== 'אלף' && w !== 'אלפים' && w !== 'to' && w !== 'for' && w !== 'את' && w !== 'ל').join(' ').trim();
+  // Take the number, the item and words like "שקל" away and keep the rest as the name.
+  let rest = withoutItem(sentence, itemMatch).replace(/\d+(?:[.,]\d+)?/g, ' ').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ');
+  rest = rest.split(/\s+/).filter(w => w && !(w.replace(/^ו/, '') in NUMBER_WORDS) && !(w in NUMBER_WORDS) && w !== 'hundred' && w !== 'thousand' && w !== 'מאה' && w !== 'מאות' && w !== 'אלף' && w !== 'אלפים' && w !== 'to' && w !== 'for' && w !== 'את' && w !== 'ל' && FILLER_WORDS.indexOf(w) < 0).join(' ').trim();
   const active = boxes.map((b, i) => ({ b: b, i: i })).filter(x => !x.b.finished);
   let match = null;
   if (rest) {
@@ -2091,12 +2574,14 @@ function handleHomeText(sentence, kind, msgEl) {
     else if (part.length === 0 && alike.length === 1) match = alike[0];
   }
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.
-  if (!match) { chooseTarget(sentence, amount, kind, msg); return; }
-  match.b.entries.unshift({ kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+  if (!match) { chooseTarget(sentence, amount, kind, msg, item); return; }
+  const entry = { kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+  if (item && kind === 'job') entry.item = item;
+  match.b.entries.unshift(entry);
   saveBoxes();
   renderHome();
   renderSummaries();
-  msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind] + ' (' + boxLabel(match.b, match.i) + ')';
+  msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind] + (entry.item ? ' · ' + entry.item : '') + ' (' + boxLabel(match.b, match.i) + ')';
 }
 
 // Nothing shows until the data has loaded.
@@ -2122,6 +2607,7 @@ async function boot() {
   lang = LS.getItem('money_lang') || 'he';
   boxes = loadBoxes();
   personal = loadPersonal();
+  seedItems();
   loading.style.display = 'none';
   applyLang();
   closeApp(); // always start on the home screen with the small boxes

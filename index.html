@@ -568,6 +568,20 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .editWhich { font-family: var(--num); font-size: 13px; color: var(--soft); background: var(--bg); border-radius: 12px; padding: 8px 10px; text-align: center; overflow-wrap: anywhere; }
 .editWhich:empty { display: none; }
 .tapEdit { cursor: pointer; }
+/* Editing inside the tapped row: the row's own content steps aside for its amount and text */
+.inlineEditing { outline: 2px solid var(--violet); outline-offset: -2px; background: var(--violetBg) !important; }
+.inlineEditing > :not(.inlineForm) { display: none !important; }
+.inlineForm { display: flex; align-items: center; gap: 6px; width: 100%; grid-column: 1 / -1; padding: 2px 0; }
+.inlineNote { flex: 1 1 auto; min-width: 0; height: 40px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-family: inherit; font-size: 15px; }
+.inlineAmountWrap { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; direction: ltr; }
+.inlineSign { font-family: var(--num); font-weight: 700; font-size: 18px; }
+.inlineAmount { width: 84px; height: 40px; padding: 0 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font-family: var(--num); font-weight: 700; font-size: 17px; text-align: center; }
+.inlineAmount.income { color: var(--greenText); }
+.inlineAmount.personal { color: var(--redText); }
+.inlineAmount.bad { border-color: var(--red) !important; }
+.inlineOk, .inlineCancel { flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer; }
+.inlineOk { background: var(--green); color: #062016; }
+.inlineCancel { background: var(--surface2); color: var(--soft); }
 .tapEdit.editingRow, .tapEdit.editingRow:hover { outline: 2px solid var(--violet); outline-offset: -2px; background: var(--violetBg) !important; }
 .editDialog { width: min(380px, 94vw); display: flex; flex-direction: column; gap: 10px; }
 .editKind { margin: 0; }
@@ -2044,10 +2058,69 @@ function closeEntryEditor() {
   document.querySelectorAll('.editingRow').forEach(r => r.classList.remove('editingRow'));
   editing = null;
 }
-// Tapping a row (not its buttons) opens the edit window for that row.
-function editOnTap(rowEl, open) {
+// Tapping a row (not its buttons) edits that row right where it is: only its own amount and text.
+// An expense row changes only that expense, an income row only that income. onSave saves and redraws.
+function editOnTap(rowEl, e, onSave) {
   rowEl.classList.add('tapEdit');
-  rowEl.addEventListener('click', ev => { if (ev.target.closest('button, input, select, a')) return; open(); });
+  rowEl.addEventListener('click', ev => {
+    if (ev.target.closest('button, input, select, a, .inlineForm')) return;
+    inlineEdit(rowEl, e, onSave);
+  });
+}
+function closeInlineEdits() {
+  document.querySelectorAll('.inlineEditing').forEach(r => { r.classList.remove('inlineEditing'); const f = r.querySelector('.inlineForm'); if (f) f.remove(); });
+}
+function inlineEdit(rowEl, e, onSave) {
+  const t = T();
+  closeInlineEdits();
+  const isIn = e.kind === 'income';
+  const form = document.createElement('div');
+  form.className = 'inlineForm';
+  const note = document.createElement('input');
+  note.type = 'text';
+  note.className = 'inlineNote';
+  note.maxLength = 80;
+  note.placeholder = t.editText;
+  note.value = shownNote(e) || (e.cat || '');
+  const before = note.value;
+  const sign = document.createElement('span');
+  sign.className = 'inlineSign ' + (isIn ? 'income' : 'personal');
+  sign.textContent = isIn ? '+' : '-';
+  const amount = document.createElement('input');
+  amount.type = 'text';
+  amount.inputMode = 'decimal';
+  amount.className = 'inlineAmount ' + (isIn ? 'income' : 'personal');
+  amount.value = e.amount;
+  amount.setAttribute('aria-label', isIn ? t.kindIn : t.kindOut);
+  const ok = document.createElement('button');
+  ok.className = 'inlineOk';
+  ok.title = t.saveBtn;
+  ok.setAttribute('aria-label', t.saveBtn);
+  ok.textContent = '✓';
+  const cancel = document.createElement('button');
+  cancel.className = 'inlineCancel';
+  cancel.title = t.cancelBtn;
+  cancel.setAttribute('aria-label', t.cancelBtn);
+  cancel.textContent = '✕';
+  const save = () => {
+    const v = findAmount(amount.value);
+    if (v === null || v < 0) { amount.classList.add('bad'); amount.focus(); return; }
+    e.amount = v; // only this row's own amount; it stays income or spending as it was
+    if (note.value.trim() !== before) { e.note = note.value.trim(); e.custom = true; }
+    closeInlineEdits();
+    onSave();
+  };
+  ok.onclick = ev => { ev.stopPropagation(); save(); };
+  cancel.onclick = ev => { ev.stopPropagation(); closeInlineEdits(); };
+  [note, amount].forEach(inp => inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') save(); if (ev.key === 'Escape') closeInlineEdits(); }));
+  const amountWrap = document.createElement('span');
+  amountWrap.className = 'inlineAmountWrap';
+  amountWrap.append(sign, amount);
+  form.append(note, amountWrap, ok, cancel);
+  rowEl.classList.add('inlineEditing');
+  rowEl.appendChild(form);
+  amount.focus();
+  amount.select();
 }
 function saveEntryEditor() {
   if (!editing) return;
@@ -2391,9 +2464,9 @@ function renderPersonalPage() {
       edit.className = 'edit';
       edit.title = t.editTitle;
       edit.textContent = '✎';
-      const editThis = () => openEntryEditor(p, 'personal', true, () => { savePersonal(); renderPersonalPage(); }, line);
-      edit.onclick = editThis;
-      editOnTap(line, editThis);
+      const saveP = () => { savePersonal(); renderPersonalPage(); };
+      edit.onclick = () => openEntryEditor(p, 'personal', false, saveP, line);
+      editOnTap(line, p, saveP);
       const del = document.createElement('button');
       del.className = 'del';
       del.textContent = '✕';
@@ -2504,9 +2577,9 @@ function renderBusiness() {
     edit.className = 'edit';
     edit.title = t.editTitle;
     edit.textContent = '✎';
-    const editThis = () => openEntryEditor(x, 'business', false, () => { saveBusiness(); renderBusiness(); }, row);
-    edit.onclick = editThis;
-    editOnTap(row, editThis);
+    const saveB = () => { saveBusiness(); renderBusiness(); };
+    edit.onclick = () => openEntryEditor(x, 'business', false, saveB, row);
+    editOnTap(row, x, saveB);
     const del = document.createElement('button');
     del.className = 'del';
     del.textContent = '\u2715';
@@ -2616,7 +2689,7 @@ function renderSummaries() {
             const line = document.createElement('div');
             line.className = 'detailLine';
             line.append(cell(e.date || ''), cell(shownNote(e) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
-            editOnTap(line, () => openEntryEditor(e, 'business', true, () => { saveBoxes(); renderHome(); renderSummaries(); }, line));
+            editOnTap(line, e, () => { saveBoxes(); renderHome(); renderSummaries(); });
             detail.appendChild(line);
           });
           // Last line: the total of this card's job spending in this period.
@@ -3079,15 +3152,15 @@ function makeRow(e, i) {
   edit.className = 'edit';
   edit.title = T().editTitle;
   edit.textContent = '\u270E';
-  const editThis = () => openEntryEditor(e, 'business', true, () => {
+  const saveCard = () => {
     saveBoxes();
     render();
     renderHome();
     renderSummaries();
     heard.textContent = T().corrected + e.amount.toFixed(2);
-  }, li);
-  edit.onclick = editThis;
-  editOnTap(li, editThis);
+  };
+  edit.onclick = () => openEntryEditor(e, 'business', false, saveCard, li);
+  editOnTap(li, e, saveCard);
   li.append(text, amt, edit, del);
   return li;
 }
@@ -3524,6 +3597,7 @@ function resetPageState() {
   document.getElementById('itemInput').value = '';
   closeTemplate();
   closeEntryEditor();
+  closeInlineEdits();
   document.getElementById('perMsg').textContent = '';
   closeSettings();
   // ניהול כספים: the summary and history panels, their folded lists, and the backup menu

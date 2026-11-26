@@ -488,6 +488,7 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 .clearHistoryBtn { align-self: center; margin-top: 10px; flex-shrink: 0; color: var(--redText); border-color: var(--redLine); background: var(--redBg); }
 .clearHistoryBtn:hover { background: var(--redBg); color: var(--red); border-color: var(--red); }
 #businessBox.closed { padding: 6px 10px; }
+body.businessOpen #home { display: none !important; }
 #businessBox:not(.closed) .summaryList { max-height: 52vh; }
 .bizTitle { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
 .bizTitle .foldSum { direction: ltr; }
@@ -1815,8 +1816,8 @@ function renderPersonalPage() {
       del.className = 'del';
       del.textContent = '✕';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
-      const noteCell = cell(p.note || '', 'perNote');
-      if (p.item) noteCell.appendChild(cell(itemLabel(p.item), 'itemChip'));
+      const noteCell = cell(shownNote(p, false), 'perNote');
+      if (itemTag(p)) noteCell.appendChild(cell(itemTag(p), 'itemChip'));
       line.append(cell(p.date || '', 'perDate'), noteCell, amt, edit, del);
       box.appendChild(line);
     });
@@ -1897,8 +1898,8 @@ function renderBusiness() {
       row.onclick = () => openApp(x.b.id); // click a line to open its card
       const text = document.createElement('div');
       text.className = 'bizText';
-      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(x.e.note || '', 'bizNote'));
-      if (x.e.item) text.appendChild(cell(itemLabel(x.e.item), 'itemChip'));
+      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(shownNote(x.e, true), 'bizNote'));
+      if (itemTag(x.e)) text.appendChild(cell(itemTag(x.e), 'itemChip'));
       text.appendChild(cell(x.e.date || '', 'bizDate'));
       const amt = document.createElement('strong');
       amt.className = part[3] ? 'income' : 'personal';
@@ -2012,7 +2013,7 @@ function renderSummaries() {
           r.items.slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(e => {
             const line = document.createElement('div');
             line.className = 'detailLine';
-            line.append(cell(e.date || ''), cell((e.note || '') + (e.item ? ' · ' + itemLabel(e.item) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            line.append(cell(e.date || ''), cell(shownNote(e, true) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
             detail.appendChild(line);
           });
           // Last line: the total of this card's job spending in this period.
@@ -2457,12 +2458,12 @@ function makeRow(e, i) {
   text.className = 'entryText';
   const note = document.createElement('span');
   note.className = 'note';
-  note.textContent = e.note;
+  note.textContent = shownNote(e, true);
   const date = document.createElement('span');
   date.className = 'entryDate';
   date.textContent = e.date || '';
   text.append(note);
-  if (e.item) text.appendChild(cell(itemLabel(e.item), 'itemChip'));
+  if (itemTag(e)) text.appendChild(cell(itemTag(e), 'itemChip'));
   text.append(date);
   const amt = document.createElement('strong');
   amt.className = e.kind === 'job' ? 'personal' : e.kind;
@@ -2620,6 +2621,30 @@ function findCard(sentence, itemMatch) {
   return null;
 }
 
+// ---- What is written on an entry ----
+// Spending: only what was bought. With an item from the list just the item ("מברשת צבע 13 שקל" -> "מברשת צבע");
+// otherwise the words left after taking away the amount, "שקל", the action, "אישי" and the card's name.
+// The amount is never written in the text: it is the minus amount.
+function spendNote(sentence, item, card) {
+  if (item) return item;
+  const cardParts = card ? boxLabel(card.b, card.i).split(/\s+/).filter(Boolean).map(normWord) : [];
+  return sentenceWords(withoutActions(sentence)).map(w => w.replace(/["'״׳`]/g, ''))
+    .filter(w => w && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w) && !saysPersonal(w)
+      && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0
+      && !(cardParts.length && wordForms(w).some(f => cardParts.indexOf(f) >= 0)))
+    .join(' ');
+}
+// Money in, in a customer's card: no text at all (the card already says who it is from, the amount is the plus amount).
+function cardNote(kind, sentence, item, card) { return kind === 'income' ? '' : spendNote(sentence, item, card); }
+// What an entry shows. Older entries were saved with the whole sentence, so the same rules are used when drawing.
+function shownNote(e, inCard) {
+  if (e.kind === 'income') return inCard ? '' : (e.note || '');
+  if (e.item) return e.item;
+  return e.note || '';
+}
+// The small tag under a spending entry: its category (the text already is the item).
+function itemTag(e) { return e.item ? itemCategory(e.item) : ''; }
+
 // The microphone inside a card: a number goes to job spending, unless the sentence says "קיבלתי" (money in).
 function handleText(sentence) {
   sentence = (sentence || '').trim();
@@ -2629,7 +2654,7 @@ function handleText(sentence) {
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
   const kind = sentenceAction(sentence) || 'job';
   const item = kind === 'job' ? findItem(withoutActions(sentence)) : null;
-  addEntry(kind, amount, sentence, item ? item.name : '');
+  addEntry(kind, amount, cardNote(kind, sentence, item ? item.name : '', null), item ? item.name : '');
   heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
 }
 
@@ -2640,7 +2665,7 @@ async function addIncome() {
   if (answer === null || answer.trim() === '') return;
   const amount = findAmount(answer);
   if (amount === null) { heard.textContent = T().notNumber; return; }
-  addEntry('income', amount, T().typedNote + amount.toFixed(2));
+  addEntry('income', amount, ''); // money in: only the date and the plus amount
   heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.income;
 }
 
@@ -2650,7 +2675,8 @@ function addArrow(kind) {
   kind = sentenceAction(box.value) || kind; // typed "קיבלתי 500 שקל" is money in
   const amount = findAmount(box.value);
   if (amount === null) { heard.textContent = T().typeFirst; return; }
-  addEntry(kind, amount, T().typedNote + amount.toFixed(2));
+  const typedItem = kind === 'job' ? findItem(box.value) : null;
+  addEntry(kind, amount, cardNote(kind, box.value, typedItem ? typedItem.name : '', null), typedItem ? typedItem.name : '');
   heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind];
   box.value = '';
   box.focus();
@@ -2827,6 +2853,7 @@ function applyPanels() {
   document.getElementById('jobSummary').classList.toggle('closed', openPanel !== 'summary');
   document.getElementById('historyBox').classList.toggle('closed', openPanel !== 'history');
   document.body.classList.toggle('compactBoxes', openPanel !== null);
+  document.body.classList.toggle('businessOpen', openPanel === 'business'); // "עסק" open: the small customer cards are hidden
 }
 
 // Leaving a page: close everything that was opened on it (panels, folded lists, menus, windows, the mic),
@@ -2918,7 +2945,7 @@ function chooseTarget(sentence, amount, kind, msg, item) {
   personalBtn.textContent = t.personalBtn;
   personalBtn.onclick = () => {
     close();
-    addPersonalEntry(kind, amount, sentence, item);
+    addPersonalEntry(kind, amount, kind === 'income' ? sentence : spendNote(sentence, item, null), item);
     msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind) + (item && kind !== 'income' ? ' · ' + item : '');
   };
   list.appendChild(personalBtn);
@@ -2928,7 +2955,7 @@ function chooseTarget(sentence, amount, kind, msg, item) {
     btn.textContent = boxLabel(b, i);
     btn.onclick = () => {
       close();
-      const entry = { kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+      const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, { b: b, i: i }), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
       if (item && kind === 'job') entry.item = item;
       b.entries.unshift(entry);
       saveBoxes();
@@ -2960,7 +2987,7 @@ function handleHomeText(sentence, kind, msgEl) {
   const item = itemMatch ? itemMatch.name : '';
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
-    addPersonalEntry(kind, amount, sentence, item);
+    addPersonalEntry(kind, amount, kind === 'income' ? sentence : spendNote(sentence, item, null), item);
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');
     return;
   }
@@ -2968,7 +2995,7 @@ function handleHomeText(sentence, kind, msgEl) {
   const match = findCard(plain, itemMatch);
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.
   if (!match) { chooseTarget(sentence, amount, kind, msg, item); return; }
-  const entry = { kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+  const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, match), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
   if (item && kind === 'job') entry.item = item;
   match.b.entries.unshift(entry);
   saveBoxes();

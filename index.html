@@ -242,6 +242,191 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 #askText { white-space: pre-wrap; text-align: center; font-size: 16px; margin: 0; }
 #syncMsg { position: fixed; bottom: 8px; left: 8px; right: 8px; text-align: center; font-size: 14px; color: white; background: crimson; border-radius: 8px; padding: 6px; display: none; z-index: 70; }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style id="voiceWalletTheme">
+/* ===== New look: dark "voice wallet". Only colours and shapes change; the layout and the buttons stay the same. ===== */
+:root {
+  --bg: #0F1117; --surface: #1A1D27; --surface2: #232736; --line: #2E3344;
+  --text: #F2F3F7; --muted: #9AA0B4; --soft: #C9CDD9;
+  --red: #FF6B5B; --redText: #FF8A7D; --redBg: #1F1315; --redLine: #4A2226;
+  --green: #34D399; --greenText: #6EE7B7; --greenBg: #11201B; --greenLine: #1F4A3A;
+  --violet: #A78BFA; --violetText: #C4B5FD; --violetBg: #1C1730; --violetLine: #3B2F63;
+  --blue: #2563EB; --blueText: #93C5FD; --blueBg: #121C2E; --blueLine: #23406E;
+  --orange: #FDBA74; --orangeBg: #2A2113; --orangeLine: #4A3518;
+  --gold: #FBBF24; --goldBg: #231C0B; --goldLine: #5C4710;
+  --num: Rubik, Heebo, Arial, sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: Heebo, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .enterBtn, .personalBtn, .startMic, .homeMic, .finishBtn, .tile .name, .total, .amount, .num { font-family: var(--num); }
+button { font-family: inherit; transition: transform .12s ease, background-color .15s ease, box-shadow .2s ease; }
+button:active { transform: scale(0.97); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--violetText); outline-offset: 2px; }
+input { background: var(--bg); color: var(--text); border-color: var(--line) !important; }
+input::placeholder { color: var(--muted); }
+.ico { width: 1em; height: 1em; vertical-align: -0.15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Text colours */
+.income { color: var(--greenText); }
+.personal { color: var(--redText); }
+.job, .jobColor { color: var(--orange); }
+.blueColor { color: var(--blueText); }
+h1 { font-weight: 800; font-size: 24px; letter-spacing: -0.3px; }
+
+/* Corner buttons */
+.langBtn, #toFront { height: 44px; min-width: 44px; padding: 0 14px !important; border-radius: 22px !important; border: 1px solid var(--line) !important; background: var(--surface) !important; color: var(--text) !important; font-family: var(--num); font-size: 15px !important; display: flex; align-items: center; justify-content: center; }
+#toFront { font-size: 20px !important; }
+#toFront[style*="display: block"], #toFront[style*="display:block"] { display: flex !important; }
+
+/* Start page */
+#startPage { padding-top: 40px; }
+.startMic { border-radius: 30px; gap: 12px; }
+.startMic .micIcon { width: 64px; height: 64px; border-radius: 32px; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+.startMic .micLabel { font-family: var(--num); }
+.startMic.blue { background: var(--redBg); border: 2px solid var(--red); color: var(--redText); }
+.startMic.blue .micIcon { background: var(--red); color: #1A0B0A; }
+.startMic.green { background: var(--greenBg); border: 2px solid var(--greenLine); color: var(--greenText); }
+.startMic.green .micIcon { background: var(--green); color: #062016; }
+.startMic.purple { border-radius: 50%; background: var(--violetBg); border: 2px solid var(--violetLine); color: var(--violetText); }
+.startMic.purple .micIcon { width: 48px; height: 48px; background: var(--violet); color: #160F2E; font-size: 22px; }
+.startMic.blue.listening { box-shadow: 0 0 0 8px rgba(255,107,91,0.18), 0 0 0 20px rgba(255,107,91,0.07); animation: micPulse 1.4s ease-in-out infinite; }
+.startMic.green.listening { box-shadow: 0 0 0 8px rgba(52,211,153,0.18), 0 0 0 20px rgba(52,211,153,0.07); animation: micPulse 1.4s ease-in-out infinite; }
+.startMic.purple.listening { box-shadow: 0 0 0 8px rgba(167,139,250,0.2), 0 0 0 20px rgba(167,139,250,0.08); animation: micPulse 1.4s ease-in-out infinite; }
+@keyframes micPulse { 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .listening { animation: none !important; } }
+#startMsg { color: var(--muted); font-size: 14px; line-height: 1.6; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 12px 16px; }
+#startMsg:empty { display: none; }
+.enterBtn { height: 56px; padding: 0 24px; border-radius: 18px; background: var(--text); color: var(--bg); font-size: 19px; }
+.personalBtn { height: 48px; margin-top: -8px; border-radius: 16px; border: 1px solid var(--blueLine); background: var(--blueBg); color: var(--blueText); font-size: 17px; }
+
+/* Cards page */
+.homeMic { width: min(320px, 90vw); height: 52px; border-radius: 18px; border: 1.5px dashed #6D5BB8; background: var(--violetBg); color: var(--violetText); font-size: 18px; font-weight: 700; }
+.homeMic.listening { background: #2A2148; }
+.homeMicMsg { color: var(--muted); }
+.tile { border-radius: 22px; background: var(--surface); border: 1px solid var(--line); padding: 14px; gap: 6px; }
+.tile:hover { background: var(--surface2); border-color: #3E4458; }
+.tile .name { font-size: 17px; font-weight: 700; color: var(--text); margin-top: 10px; }
+.tile .num { font-size: 22px; font-weight: 700; color: var(--orange); direction: ltr; }
+.tile .opened { font-size: 11px; color: var(--muted); }
+.tile .rename, .tile .removeTile { width: 28px; height: 28px; padding: 0; border-radius: 9px; background: var(--surface2); color: var(--soft); font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.tile .removeTile:hover { background: var(--redBg); color: var(--redText); }
+.tile .rename:hover { background: #2E3344; color: var(--text); }
+body.compactBoxes .tile { border-width: 1px; border-radius: 14px; }
+body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { width: 20px; height: 20px; font-size: 10px; }
+
+.summaryBox, #historyBox { background: var(--surface); border-radius: 22px; padding: 14px 16px; }
+#jobSummary { border: 1px solid var(--orangeLine); }
+#historyBox { border: 1px solid var(--violetLine); }
+.historyTitle { color: var(--violetText); }
+.panelTitle { font-size: 17px; font-weight: 700; }
+.viewTabs { background: var(--bg); border-radius: 14px; padding: 4px; gap: 4px; }
+.viewTab { flex: 1; height: 36px; border: none; border-radius: 10px; background: transparent; color: var(--muted); font-size: 14px; }
+.viewTab.active { background: var(--line); color: var(--text); font-weight: 700; }
+#personalPage .viewTab.active { background: var(--blue); color: #fff; }
+.periodRow { border-bottom: 1px solid #262A38; font-size: 15px; padding: 8px 6px; }
+.periodRow.head { background: var(--surface); color: var(--muted); font-weight: 500; font-size: 12px; }
+.periodTitle { background: var(--orangeBg); color: #FDE68A; border-radius: 12px; padding: 8px 12px; margin: 10px 0 4px; }
+#personalPage .periodTitle { background: var(--blueBg); color: var(--blueText); }
+.periodRow.totalRow { background: var(--orangeBg); border-bottom: none; border-radius: 12px; color: #FDE68A; }
+#jobSummaryList .clickRow:hover { background: var(--surface2); }
+#jobSummaryList .clickRow .period { color: var(--orange); }
+.periodDetail { background: var(--bg); border-bottom: 1px solid #262A38; border-radius: 12px; margin: 2px 0 4px; }
+.detailLine > div:first-child { color: var(--muted); }
+.detailAmount { color: var(--redText); }
+.detailTotal { border-top-color: var(--line); }
+.histRow { border-bottom: 1px solid #262A38; }
+.histRow:hover { background: var(--surface2); }
+.histRow.checked { background: var(--greenBg); }
+.histRow.checked:hover { background: #163026; }
+.histRow.head, .histRow.head:hover { background: var(--surface); color: var(--muted); }
+.histRow .histDates { color: var(--muted); }
+.histRow button { background: var(--violet); color: #160F2E; font-weight: 700; border-radius: 9px; padding: 5px 10px; }
+.histRow input[type=checkbox] { accent-color: var(--green); }
+.savedTitle { color: var(--muted); }
+
+#fileBar { padding: 10px 0 16px; }
+.fileBtn { height: 44px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--soft); font-size: 15px; }
+.fileBtn.load { background: transparent; }
+.fileBtn:hover { background: var(--surface2); color: var(--text); }
+.fileMsg { color: var(--muted); }
+
+/* Open card */
+.openedLine { color: var(--muted); font-size: 12px; }
+.titleEdit { width: 32px; height: 32px; padding: 0; border-radius: 10px; background: var(--surface2); color: var(--soft); font-size: 15px; }
+.top { flex-direction: row; justify-content: center; gap: 10px; margin-top: 6px; }
+.typeArea { width: auto; flex: 0 1 300px; }
+button.bigMic { width: 60px; height: 60px; border-radius: 30px; background: var(--red); color: #1A0B0A; font-size: 26px; box-shadow: 0 0 0 6px rgba(255,107,91,0.15); }
+button.bigMic.listening { background: var(--red); box-shadow: 0 0 0 8px rgba(255,107,91,0.25), 0 0 0 18px rgba(255,107,91,0.08); animation: micPulse 1.4s ease-in-out infinite; }
+.typeRow { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 5px; gap: 6px; }
+.typeRow input { flex: 1 1 auto; width: auto; border: none !important; background: transparent; font-family: var(--num); font-size: 18px; padding: 8px 10px; }
+.typeRow input:focus { outline: none; }
+.typeRow button.arrowJob { width: 46px; height: 42px; padding: 0; border-radius: 12px; background: #3A1A1C; color: var(--redText); font-size: 20px; }
+.heard { color: var(--muted); font-size: 14px; margin: 10px 0; }
+.col { border-radius: 24px; padding: 16px; margin-bottom: 12px; }
+.col.in { background: var(--greenBg); border: 1px solid var(--greenLine); }
+.col h2 { font-size: 17px; text-align: start; margin-bottom: 12px; }
+.col h2.income { color: var(--greenText); }
+.cards { gap: 10px; margin-bottom: 10px; }
+.card { background: var(--bg); border-radius: 16px; padding: 12px; text-align: start; gap: 6px; }
+.card h3 { color: var(--muted); font-size: 12px; }
+.card .total, .card .amount { font-size: 24px; direction: ltr; text-align: end; }
+html[dir=ltr] .card .total, html[dir=ltr] .card .amount { text-align: start; }
+.card.moneyInCard .addIncome { top: 10px; right: auto; inset-inline-end: 10px; width: 32px; height: 32px; border-radius: 10px; background: var(--green); color: #062016; font-weight: 700; }
+.tenBar { background: var(--goldBg); border: 1px solid var(--goldLine); }
+.tenBar h3 { color: #FDE68A; }
+.tenBar .amount { color: var(--gold); }
+.tenBar input { background: var(--bg); color: var(--gold); border: 1px solid #8A6A12 !important; border-radius: 8px; font-family: var(--num); }
+.jobCard { background: var(--redBg); border: 1px solid var(--redLine); }
+.jobCard h3 { color: var(--redText); }
+.listTitle { color: var(--muted); text-align: start; font-size: 12px; margin: 6px 2px; }
+li { background: var(--bg); border-radius: 14px; color: var(--text); }
+.entryList li { padding: 8px 10px; margin-bottom: 6px; }
+.entryList .entryDate { color: var(--muted); font-size: 11px; }
+.entryList strong { font-family: var(--num); }
+button.edit, button.del { width: 36px; height: 36px; padding: 0; border-radius: 10px; background: var(--surface2); color: var(--soft); font-size: 14px; }
+button.del:hover { background: var(--redBg); color: var(--redText); }
+button.edit:hover { background: #2E3344; color: var(--text); }
+.belowRow { align-items: stretch; gap: 12px; }
+.afterJobBox { background: var(--surface); border: 1px solid var(--orangeLine); border-radius: 20px; padding: 12px 14px; }
+.afterJobBox h3 { color: var(--muted); font-size: 12px; }
+.afterJobBox .total { font-size: 30px; font-weight: 800; direction: ltr; }
+.finishWrap { flex: 1; }
+.finishBtn { width: 100%; height: 100%; min-height: 56px; border-radius: 18px; background: var(--violet); color: #160F2E; font-size: 17px; }
+
+/* Personal page */
+#personalPage { padding-top: 56px; }
+#personalPage h1 { color: var(--blueText); }
+#personalCards .card { background: var(--blueBg); border: 1px solid var(--blueLine); }
+#personalList { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 8px; }
+.perLine { border-bottom: 1px solid #262A38; padding: 10px 6px; }
+.perLine .perDate { color: var(--muted); font-size: 12px; }
+.perLine strong { font-family: var(--num); }
+.perTotal { background: var(--blueBg); border-bottom: none; border-radius: 12px; color: var(--blueText); padding: 8px 4px; }
+.perTotal span { color: var(--muted); }
+
+/* Windows that open on top */
+#nameOverlay, #askOverlay, #pickOverlay { background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); }
+.nameDialog { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.55); color: var(--text); }
+.nameDialog h3 { font-size: 18px; }
+.nameDialog input { background: var(--bg); color: var(--text); border-radius: 14px; padding: 12px; }
+.nameMic { background: var(--violet); color: #160F2E; }
+.nameMic.listening { background: var(--violet); box-shadow: 0 0 0 6px rgba(167,139,250,0.25); }
+.nameMicMsg { color: var(--muted); }
+.nameDialog .savedTitle { color: var(--muted); font-size: 13px; }
+.savedItem button.pick { background: var(--surface2); border: 1px solid var(--line); color: var(--text); border-radius: 14px; }
+.savedItem button.pick:hover { background: #2E3344; }
+.savedItem button.forget { background: var(--surface2); color: var(--soft); border-radius: 14px; }
+.dialogButtons button { height: 46px; padding: 0 22px; border-radius: 14px; font-weight: 700; }
+.dialogButtons .okBtn { background: var(--green); color: #062016; }
+.dialogButtons .cancelBtn { background: transparent; border: 1px solid var(--line); color: var(--soft); }
+#askText, #pickText { color: var(--text); line-height: 1.6; }
+#pickList button { min-height: 52px; background: var(--surface2); border: 1px solid var(--line); color: var(--text); border-radius: 16px; font-family: var(--num); font-weight: 500; }
+#pickList button:hover { background: #2E3344; border-color: var(--orange); }
+#pickList button.pickPersonal { background: var(--blue); border-color: var(--blue); color: #fff; }
+#loadingPage { color: var(--muted); }
+#loadingPage button { background: var(--violet); color: #160F2E; border-radius: 14px; font-weight: 700; }
+#syncMsg { background: var(--redBg); border: 1px solid var(--red); color: var(--redText); border-radius: 14px; padding: 10px; }
+</style>
 </head>
 <body>
 
@@ -268,11 +453,11 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 
 <div id="startPage">
   <div class="startRow">
-    <button class="startMic blue" id="startBlue"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startExpenses"></span></button>
-    <button class="startMic green" id="startGreen"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startIncome"></span></button>
+    <button class="startMic blue" id="startBlue"><span class="micIcon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></span><span class="micLabel" data-t="startExpenses"></span></button>
+    <button class="startMic green" id="startGreen"><span class="micIcon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></span><span class="micLabel" data-t="startIncome"></span></button>
   </div>
-  <button class="startMic purple" id="startPurple"><span class="micIcon">&#127908;</span><span class="micLabel" data-t="startNewCard"></span></button>
-  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button><button class="personalBtn" id="personalBtn"><span data-t="personalBtn"></span> &#127908;</button></div>
+  <button class="startMic purple" id="startPurple"><span class="micIcon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></span><span class="micLabel" data-t="startNewCard"></span></button>
+  <span class="homeMicMsg" id="startMsg"></span><button class="enterBtn" id="enterBtn" data-t="enterBtn"></button><button class="personalBtn" id="personalBtn"><span data-t="personalBtn"></span> <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button></div>
 <!-- Personal page: what was said with "אישי" on the red and green mics -->
 <div id="personalPage" style="display:none">
   <h1 data-t="personalPageTitle"></h1>
@@ -284,7 +469,7 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
   </div>
   <div id="personalList"></div>
 </div>
-<button id="toFront" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10">&#127908;</button>
+<button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button>
 <!-- The small boxes are made by the script below. -->
 <div id="homeRow">
   <div id="jobSide">
@@ -322,7 +507,7 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 <div id="nameOverlay" onclick="closeNameDialog(null)">
   <div class="nameDialog" onclick="event.stopPropagation()">
     <h3 id="nameDialogTitle"></h3>
-    <div class="nameRow"><input type="text" id="nameInput" maxlength="40"><button class="nameMic" id="nameMic" onclick="sayName()">&#127908;</button></div>
+    <div class="nameRow"><input type="text" id="nameInput" maxlength="40"><button class="nameMic" id="nameMic" aria-label="מיקרופון" onclick="sayName()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button></div>
     <div class="nameMicMsg" id="nameMicMsg"></div>
     <div class="savedTitle" id="savedTitle"></div>
     <div class="savedList" id="savedList"></div>
@@ -340,11 +525,11 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 <div class="page">
   <div class="leftSide">
     <div class="top">
-      <button class="bigMic" id="micBtn" onclick="listen()">&#127908;</button>
+      <button class="bigMic" id="micBtn" aria-label="מיקרופון" onclick="listen()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button>
       <div class="typeArea">
         <div class="typeRow">
           <input type="text" id="typed" inputmode="decimal" data-p="typePlaceholder">
-          <button class="arrowJob" id="arrowJob" onclick="addArrow('job')">&#11015;</button>
+          <button class="arrowJob" id="arrowJob" onclick="addArrow('job')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width:2.4"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg></button>
         </div>
       </div>
     </div>
@@ -990,7 +1175,7 @@ function renderPersonalPage() {
       };
       const del = document.createElement('button');
       del.className = 'del';
-      del.textContent = 'X';
+      del.textContent = '\u2715';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
       line.append(cell(p.date || '', 'perDate'), cell(p.note || '', 'perNote'), amt, edit, del);
       box.appendChild(line);
@@ -1275,7 +1460,7 @@ function renderHome() {
       const remove = document.createElement('button');
       remove.className = 'removeTile';
       remove.title = T().removeBox;
-      remove.textContent = 'X';
+      remove.textContent = '\u2715';
       remove.onclick = (ev) => removeBox(ev, b.id);
       tile.appendChild(remove);
     }
@@ -1406,7 +1591,7 @@ function drawSavedNames() {
     const forget = document.createElement('button');
     forget.className = 'forget';
     forget.title = T().forgetName;
-    forget.textContent = 'X';
+    forget.textContent = '\u2715';
     forget.onclick = () => {
       LS.setItem('money_names', JSON.stringify(getNames().filter(n => n !== name)));
       drawSavedNames();
@@ -1544,7 +1729,7 @@ function makeRow(e, i) {
   amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
   const del = document.createElement('button');
   del.className = 'del';
-  del.textContent = 'X';
+  del.textContent = '\u2715';
   del.onclick = () => { box.entries.splice(i, 1); saveBoxes(); render(); };
   const edit = document.createElement('button');
   edit.className = 'edit';

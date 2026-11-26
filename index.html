@@ -533,6 +533,22 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .perSectionTitle { font-size: 18px; font-weight: 700; text-align: start; margin: 6px 2px 10px; }
 .perTotal.perTotalOne { grid-template-columns: 1fr; }
 
+/* אישי: "הוספה מקטגוריה" and "פריטים וקטגוריות" at the bottom, always shown */
+.perTools { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 16px auto 8px; }
+#personalPage .perTools .itemsOpenBtn { display: inline-block; margin: 0; }
+.tplOpenBtn { color: var(--blueText); border-color: var(--blueLine); background: var(--blueBg); }
+.perMsg { display: block; text-align: center; margin: 4px 0 20px; }
+/* The category template window */
+#tplOverlay { display: none; position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
+#tplOverlay.show { display: flex; }
+.tplDialog { width: min(420px, 94vw); max-height: 92vh; overflow-y: auto; }
+.tplDialog .itemAddRow input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--line); font-size: 15px; }
+.tplDialog .itemAddRow input:disabled { opacity: 0.5; }
+.tplRow { display: grid; grid-template-columns: 1fr 96px auto; gap: 6px; align-items: center; }
+.tplPrice { height: 40px; width: 100%; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line); font-family: var(--num); font-size: 16px; direction: ltr; text-align: center; }
+.tplPrice:focus { border-color: var(--green) !important; outline: none; }
+.tplTotal { font-family: var(--num); font-weight: 700; color: var(--redText); text-align: center; min-height: 20px; }
+
 /* Settings: the gear at the top right of the first page, and its window */
 .settingsBtn { position: fixed; top: 8px; right: 8px; z-index: 10; width: 44px; height: 44px; padding: 0; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 22px; display: none; align-items: center; justify-content: center; cursor: pointer; }
 .settingsBtn.show { display: flex; }
@@ -614,8 +630,12 @@ html[dir=ltr] .jobBody .total { text-align: start; }
     <button id="perCatBtn" class="viewTab" onclick="setPersonalView('category')" data-t="byCategory"></button>
   </div>
   <div id="personalList"></div>
-  <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems()" data-t="itemsBtn"></button>
   </div>
+  <div class="perTools">
+    <button class="fileBtn tplOpenBtn" id="perTplBtn" onclick="openTemplate()" data-t="templateBtn"></button>
+    <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems()" data-t="itemsBtn"></button>
+  </div>
+  <div class="homeMicMsg perMsg" id="perMsg"></div>
 </div>
 <button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><svg class="backArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
 <!-- The small boxes are made by the script below. -->
@@ -658,6 +678,26 @@ html[dir=ltr] .jobBody .total { text-align: start; }
   <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
   <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="loadBackupFile(event)">
   </div><div class="fileMsg" id="fileMsg"></div>
+</div>
+
+<!-- Add from a category: every item of the chosen category, each with an empty price to type -->
+<div id="tplOverlay" onclick="closeTemplate()">
+  <div class="nameDialog itemsDialog tplDialog" onclick="event.stopPropagation()">
+    <h3 data-t="templateTitle"></h3>
+    <div class="itemAddRow">
+      <select id="tplCat" onchange="tplCatChanged(this)"></select>
+      <button class="edit" id="tplRenameCat" onclick="renameTplCat()">&#9998;</button>
+      <button class="del" id="tplDelCat" onclick="removeTplCat()">&#10005;</button>
+    </div>
+    <div class="nameMicMsg" id="tplMsg"></div>
+    <div class="savedList itemsList" id="tplList"></div>
+    <div class="itemAddRow"><input type="text" id="tplNewItem" maxlength="40" data-p="tplNewItem" onkeydown="if(event.key==='Enter')addTplItem()"><button class="itemAddBtn" onclick="addTplItem()" data-t="addItem"></button></div>
+    <div class="tplTotal" id="tplTotal"></div>
+    <div class="dialogButtons">
+      <button class="okBtn" onclick="addTemplateEntries()" data-t="templateAddAll"></button>
+      <button class="cancelBtn" onclick="closeTemplate()" data-t="closeBtn"></button>
+    </div>
+  </div>
 </div>
 
 <!-- Items and categories: what was bought -->
@@ -1128,6 +1168,20 @@ const TEXT = {
     lightTheme: 'עיצוב בהיר',
     businessTitle: 'עסק',
     clearHistory: 'נקה היסטוריה',
+    templateBtn: 'הוספה מקטגוריה',
+    templateTitle: 'הוספת הוצאות מקטגוריה',
+    templateHint: 'הקלידו מחיר לכל פריט שקניתם. פריט בלי מחיר לא יתווסף.',
+    tplNoCats: 'עדיין אין קטגוריות. בחרו "+ קטגוריה חדשה" כדי ליצור אחת.',
+    tplEmpty: 'אין עדיין פריטים בקטגוריה הזו. הוסיפו פריט למטה.',
+    tplNewItem: 'פריט חדש בקטגוריה',
+    pricePh: 'מחיר',
+    templateAddAll: 'הוספת הכל',
+    tplNoPrices: 'הקלידו מחיר לפחות לפריט אחד.',
+    tplAdded: 'נוספו {n} הוצאות אישיות, סה"כ {sum}',
+    tplItemMoved: 'הפריט הועבר לקטגוריה הזו.',
+    renameCat: 'שם חדש לקטגוריה:',
+    removeCatSure: 'למחוק את הקטגוריה "{c}" ואת כל הפריטים שבה? הוצאות שכבר נרשמו יישארו.',
+    catExists: 'כבר יש קטגוריה בשם הזה.',
     clearHistorySure: 'למחוק את כל ההיסטוריה?',
     bizIncome: 'הכנסות',
     bizSpending: 'הוצאות העסק',
@@ -1277,6 +1331,20 @@ const TEXT = {
     lightTheme: 'Light style',
     businessTitle: 'Business',
     clearHistory: 'Clear history',
+    templateBtn: 'Add from a category',
+    templateTitle: 'Add spending from a category',
+    templateHint: 'Type a price for each item you bought. Items without a price are not added.',
+    tplNoCats: 'No categories yet. Choose "+ New category..." to make one.',
+    tplEmpty: 'No items in this category yet. Add one below.',
+    tplNewItem: 'New item in this category',
+    pricePh: 'Price',
+    templateAddAll: 'Add all',
+    tplNoPrices: 'Type a price for at least one item.',
+    tplAdded: 'Added {n} personal expenses, total {sum}',
+    tplItemMoved: 'The item was moved to this category.',
+    renameCat: 'New name for the category:',
+    removeCatSure: 'Delete the category "{c}" and all its items? Spending already saved stays.',
+    catExists: 'There is already a category with that name.',
     clearHistorySure: 'Delete all the history?',
     bizIncome: 'Income',
     bizSpending: 'Business spending',
@@ -1361,7 +1429,7 @@ function toggleLang() {
 
 // ---- Settings: hide the instruction texts (the ones that tell you what to say) ----
 // Saved as money_hide_hints ('1' = hidden), with the other settings, so it stays after a reload.
-const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty'];
+const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint'];
 function hintsHidden() { return LS.getItem('money_hide_hints') === '1'; }
 // An instruction text, or nothing when instructions are hidden.
 function hint(key) { return hintsHidden() ? '' : T()[key]; }
@@ -1375,6 +1443,8 @@ function applyHints() {
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   const startMsg = document.getElementById('startMsg');
   if (startMsg.textContent === '' || isHintText(startMsg.textContent)) startMsg.textContent = hint('startHint');
+  const tplMsg = document.getElementById('tplMsg');
+  if (tplMsg.textContent === '' || isHintText(tplMsg.textContent)) tplMsg.textContent = hint('templateHint');
   const itemMsg = document.getElementById('itemMsg');
   if (itemMsg.textContent === '' || isHintText(itemMsg.textContent)) itemMsg.textContent = hint('sayItemHint');
   renderPersonalPage();
@@ -1446,7 +1516,7 @@ function addBusinessSpend(amount, note, item) {
 }
 function addPersonalEntry(kind, amount, note, item) {
   const now = new Date();
-  const entry = { id: 'p' + Date.now(), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
+  const entry = { id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
   if (item && kind !== 'income') entry.item = item;
   personal.unshift(entry);
   savePersonal();
@@ -1558,6 +1628,168 @@ function itemLabel(item) {
   if (!item) return '';
   const cat = itemCategory(item);
   return cat ? item + ' · ' + cat : item;
+}
+
+// ---- Category templates (אישי): a category is a saved list of item names, no prices ----
+// Choosing a category shows all its items, each with an empty price to type (prices change).
+// "הוספת הכל" adds every item that got a price as personal spending. Items and categories are the same
+// list as in "פריטים וקטגוריות" (money_items / money_cats), so they are saved and synced with it.
+let tplCat = '';
+const tplPrices = {}; // item name -> the price typed for it, while the window is open
+function tplItems() { return getItems().filter(it => (it.cat || '') === tplCat && tplCat).sort((a, b) => a.name.localeCompare(b.name)); }
+function fillTplSelect() {
+  const t = T();
+  const sel = document.getElementById('tplCat');
+  sel.innerHTML = '';
+  const cats = getCats();
+  if (tplCat && cats.indexOf(tplCat) < 0) tplCat = '';
+  if (!tplCat) tplCat = cats[0] || '';
+  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
+  const n = document.createElement('option'); n.value = '__new__'; n.textContent = t.newCat; sel.appendChild(n);
+  sel.value = tplCat || '__new__';
+  sel.setAttribute('aria-label', t.category);
+}
+function openTemplate() {
+  Object.keys(tplPrices).forEach(k => delete tplPrices[k]);
+  document.getElementById('tplMsg').textContent = hint('templateHint');
+  document.getElementById('tplNewItem').value = '';
+  drawTemplate();
+  document.getElementById('tplOverlay').classList.add('show');
+}
+function closeTemplate() { document.getElementById('tplOverlay').classList.remove('show'); }
+async function tplCatChanged(sel) {
+  if (sel.value !== '__new__') { tplCat = sel.value; drawTemplate(); return; }
+  const answer = await askText(T().newCatPrompt, '');
+  const clean = String(answer || '').trim();
+  if (clean) {
+    const cats = getCats();
+    if (cats.indexOf(clean) < 0) { cats.push(clean); saveCats(cats); }
+    tplCat = clean;
+    itemsChanged();
+  }
+  drawTemplate();
+  if (clean) document.getElementById('tplNewItem').focus();
+}
+function tplTotal() {
+  let sum = 0, n = 0;
+  tplItems().forEach(it => { const v = findAmount(tplPrices[it.name] || ''); if (v !== null && v > 0) { sum += v; n++; } });
+  return { sum: sum, n: n };
+}
+function showTplTotal() {
+  const tt = tplTotal();
+  document.getElementById('tplTotal').textContent = tt.n ? T().totalLabel + ': ' + tt.sum.toFixed(2) : '';
+}
+function drawTemplate() {
+  const t = T();
+  fillTplSelect();
+  document.getElementById('tplRenameCat').style.display = tplCat ? '' : 'none';
+  document.getElementById('tplDelCat').style.display = tplCat ? '' : 'none';
+  document.getElementById('tplRenameCat').title = t.renameCat;
+  document.getElementById('tplDelCat').title = t.removeBox;
+  document.getElementById('tplNewItem').disabled = !tplCat;
+  const box = document.getElementById('tplList');
+  box.innerHTML = '';
+  if (!tplCat) { box.appendChild(cell(t.tplNoCats, 'savedTitle')); showTplTotal(); return; }
+  const list = tplItems();
+  if (!list.length) box.appendChild(cell(t.tplEmpty, 'savedTitle'));
+  list.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'tplRow';
+    const name = document.createElement('button');
+    name.className = 'itemName';
+    name.title = t.renameItem;
+    name.textContent = it.name;
+    name.onclick = async () => {
+      const before = getItems().map(x => x.name);
+      await renameItem(it.name);
+      const after = getItems().map(x => x.name);
+      const renamed = after.find(x => before.indexOf(x) < 0);
+      if (renamed && it.name in tplPrices) { tplPrices[renamed] = tplPrices[it.name]; delete tplPrices[it.name]; }
+      drawTemplate();
+    };
+    const price = document.createElement('input');
+    price.type = 'text';
+    price.inputMode = 'decimal';
+    price.className = 'tplPrice';
+    price.placeholder = t.pricePh;
+    price.setAttribute('aria-label', t.pricePh + ' - ' + it.name);
+    price.value = tplPrices[it.name] || ''; // empty: type today's price
+    price.oninput = () => { tplPrices[it.name] = price.value; showTplTotal(); };
+    price.onkeydown = e => { if (e.key === 'Enter') { const all = [...box.querySelectorAll('.tplPrice')]; const next = all[all.indexOf(price) + 1]; if (next) next.focus(); } };
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.title = t.removeBox;
+    del.setAttribute('aria-label', t.removeBox);
+    del.textContent = '✕';
+    del.onclick = async () => {
+      if (!(await askConfirm(T().removeItemSure))) return;
+      saveItems(getItems().filter(y => y.name !== it.name));
+      delete tplPrices[it.name];
+      itemsChanged();
+      drawTemplate();
+    };
+    row.append(name, price, del);
+    box.appendChild(row);
+  });
+  showTplTotal();
+}
+// A new item inside the chosen category (an item that is already in another category moves here).
+function addTplItem() {
+  const t = T();
+  const input = document.getElementById('tplNewItem');
+  const msg = document.getElementById('tplMsg');
+  const name = input.value.trim().replace(/[.!?,]+$/, '');
+  if (!tplCat) return;
+  if (!name) { msg.textContent = t.itemEmpty; return; }
+  const list = getItems();
+  const have = list.find(x => normKey(x.name) === normKey(name));
+  if (have) {
+    if (have.cat === tplCat) msg.textContent = t.itemExists;
+    else { have.cat = tplCat; saveItems(list); msg.textContent = t.tplItemMoved; }
+  } else {
+    list.push({ name: name, cat: tplCat });
+    saveItems(list);
+    msg.textContent = t.itemAdded + name;
+  }
+  input.value = '';
+  input.focus();
+  itemsChanged();
+  drawTemplate();
+}
+async function renameTplCat() {
+  if (!tplCat) return;
+  const old = tplCat;
+  const answer = await askText(T().renameCat, old);
+  const clean = String(answer || '').trim();
+  if (!clean || clean === old) return;
+  if (getCats().indexOf(clean) >= 0) { document.getElementById('tplMsg').textContent = T().catExists; return; }
+  saveCats(getCats().map(c => c === old ? clean : c));
+  saveItems(getItems().map(x => x.cat === old ? { name: x.name, cat: clean } : x));
+  tplCat = clean;
+  itemsChanged();
+  drawTemplate();
+}
+async function removeTplCat() {
+  if (!tplCat) return;
+  const old = tplCat;
+  if (!(await askConfirm(T().removeCatSure.replace('{c}', old)))) return;
+  saveItems(getItems().filter(x => x.cat !== old));
+  saveCats(getCats().filter(c => c !== old));
+  tplCat = '';
+  itemsChanged();
+  drawTemplate();
+}
+// Adds every item that got a price as personal spending, then shows the spending list.
+function addTemplateEntries() {
+  const t = T();
+  const chosen = tplItems().map(it => ({ it: it, v: findAmount(tplPrices[it.name] || '') })).filter(x => x.v !== null && x.v > 0);
+  if (!chosen.length) { document.getElementById('tplMsg').textContent = t.tplNoPrices; return; }
+  const sum = chosen.reduce((s, x) => s + x.v, 0);
+  chosen.slice().reverse().forEach(x => addPersonalEntry('job', x.v, x.it.name, x.it.name)); // keeps the list order
+  closeTemplate();
+  personalOpen = 'out';
+  renderPersonalPage();
+  document.getElementById('perMsg').textContent = t.tplAdded.replace('{n}', chosen.length).replace('{sum}', sum.toFixed(2));
 }
 
 // The items window: add an item (type it or say it), set its category, rename it or remove it.
@@ -1800,7 +2032,6 @@ function renderPersonalPage() {
   sectionTitle.textContent = isIn ? t.incomeTitle : t.startExpenses;
   sectionTitle.className = 'perSectionTitle ' + (isIn ? 'income' : 'personal');
   document.getElementById('perCatBtn').style.display = isIn ? 'none' : '';
-  document.getElementById('perItemsBtn').style.display = isIn ? 'none' : '';
   const shown = personal.filter(p => isIn ? p.kind === 'income' : p.kind !== 'income');
   const box = document.getElementById('personalList');
   box.innerHTML = '';
@@ -2970,6 +3201,8 @@ function resetPageState() {
   if (document.getElementById('nameOverlay').classList.contains('show')) closeNameDialog(null);
   document.getElementById('itemsOverlay').classList.remove('show');
   document.getElementById('itemInput').value = '';
+  closeTemplate();
+  document.getElementById('perMsg').textContent = '';
   closeSettings();
   // ניהול כספים: the summary and history panels, their folded lists, and the backup menu
   openPanel = null;

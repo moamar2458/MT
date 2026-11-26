@@ -591,6 +591,9 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .tapEdit.editingRow, .tapEdit.editingRow:hover { outline: 2px solid var(--violet); outline-offset: -2px; background: var(--violetBg) !important; }
 .editDialog { width: min(380px, 94vw); display: flex; flex-direction: column; gap: 10px; }
 .editKind { margin: 0; }
+.editDialog.adding #editItemRow { order: -1; }
+.editDialog.adding #editCatRow { order: -1; }
+.editDialog.adding h3 { order: -2; }
 .editField { display: flex; flex-direction: column; gap: 4px; text-align: start; font-size: 13px; color: var(--muted); }
 .editField input[type=date] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: start; line-height: 44px; }
 .editField input[type=date]::-webkit-date-and-time-value { text-align: start; }
@@ -681,7 +684,7 @@ html[dir=rtl] #editAmount { text-align: end; }
     </label>
     <!-- Shown when Settings is opened from ניהול כספים -->
     <div class="settingsTools" id="settingsTools">
-      <button class="fileBtn itemsOpenBtn" onclick="closeSettings(); openItems('business')" data-t="itemsBtn"></button>
+      <button class="fileBtn itemsOpenBtn" onclick="const sc = settingsScope; closeSettings(); openItems(sc)" data-t="itemsBtn"></button>
       <button class="fileBtn" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button>
       <div id="bm" class="backupMenu" style="display:none">
         <button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
@@ -719,9 +722,9 @@ html[dir=rtl] #editAmount { text-align: end; }
   <div id="personalList"></div>
   </div>
   <div class="perTools">
-    <button class="fileBtn tplOpenBtn" id="perTplBtn" onclick="openTemplate()" data-t="templateBtn"></button>
-    <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems('personal')" data-t="itemsBtn"></button>
+    <button class="fileBtn tplOpenBtn" id="perAddItemBtn" onclick="addPersonalItem()" data-t="addItemBtn"></button>
   </div>
+  <button class="cardsGear" id="perGear" onclick="openSettings('personal')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   <div class="homeMicMsg perMsg" id="perMsg"></div>
 </div>
 <button id="toFront" aria-label="חזרה" style="display:none;position:fixed;top:8px;right:8px;padding:3px 8px;font-size:22px;border:none;border-radius:8px;background:#333;color:white;cursor:pointer;z-index:10"><svg class="backArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
@@ -729,7 +732,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 <div id="homeRow">
   <div id="jobSide">
     <h2 class="sideTitle" style="display:none" data-t="jobTitle"></h2>
-    <button class="cardsGear" id="cardsGear" onclick="openSettings(true)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <button class="cardsGear" id="cardsGear" onclick="openSettings('business')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <div class="homeMicRow"><div class="homeMicLine"><button class="homeMic" id="homeMicBtn" onclick="addBox()" data-t="newCardBtn"></button></div><span class="homeMicMsg" id="homeMicMsg"></span></div>
     <div id="home"></div>
   </div>
@@ -785,7 +788,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 <!-- Edit an entry: its type, amount, text, date and item -->
 <div id="editOverlay" onclick="closeEntryEditor()">
   <div class="nameDialog editDialog" onclick="event.stopPropagation()">
-    <h3 data-t="editEntryTitle"></h3>
+    <h3 id="editTitle"></h3>
     <div class="editWhich" id="editWhich"></div>
     <label class="editField"><span data-t="colAmount"></span><input type="text" id="editAmount" inputmode="decimal" autocomplete="off"></label>
     <label class="editField"><span data-t="editDate"></span><input type="date" id="editDate"></label>
@@ -1276,9 +1279,12 @@ const TEXT = {
     editDate: 'תאריך',
     saveBtn: 'שמירה',
     amountBad: 'הקלידו סכום תקין.',
+    customersLabel: 'לקוחות',
+    addItemBtn: 'הוספת פריט',
+    addItemTitle: 'הוספת פריט',
     addItemAsk: '"{x}" לא נמצא ברשימת הפריטים. להוסיף אותו לרשימה?',
-    pickSection: (heardText, amountText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - הוצאה\nזה נמצא גם באישי וגם בעסק. לאן להוסיף?',
-    pickSayHint: 'אפשר גם לומר את התשובה, למשל "אישי" או "עסק".',
+    pickSection: (heardText, amountText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - הוצאה\nזה נמצא גם באישי וגם בלקוחות. לאן להוסיף?',
+    pickSayHint: 'אפשר גם לומר את התשובה, למשל "אישי", "לקוחות" או שם של לקוח.',
     pickNotUnderstood: 'לא הבנתי. אמרו שוב או לחצו על כפתור.',
     templateBtn: 'הוספה מקטגוריה',
     templateTitle: 'הוספת הוצאות מקטגוריה',
@@ -1450,9 +1456,12 @@ const TEXT = {
     editDate: 'Date',
     saveBtn: 'Save',
     amountBad: 'Type a valid amount.',
+    customersLabel: 'Customers',
+    addItemBtn: 'Add an item',
+    addItemTitle: 'Add an item',
     addItemAsk: '"{x}" is not in the items list. Add it to the list?',
-    pickSection: (heardText, amountText) => 'I heard: "' + heardText + '"\n' + amountText + ' - spending\nThis is in both Personal and Business. Where should it go?',
-    pickSayHint: 'You can also say the answer, for example "personal" or "business".',
+    pickSection: (heardText, amountText) => 'I heard: "' + heardText + '"\n' + amountText + ' - spending\nThis is in both Personal and Customers. Where should it go?',
+    pickSayHint: 'You can also say the answer, for example "personal", "customers" or a customer\'s name.',
     pickNotUnderstood: 'I did not understand. Say it again or tap a button.',
     templateBtn: 'Add from a category',
     templateTitle: 'Add spending from a category',
@@ -1535,6 +1544,8 @@ function applyLang() {
   document.getElementById('settingsBtn').title = t.settingsBtn;
   document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('cardsGear').title = t.settingsBtn;
+  document.getElementById('perGear').title = t.settingsBtn;
+  document.getElementById('perGear').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('cardsGear').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   applyTheme();
@@ -1587,9 +1598,12 @@ function setTheme(theme) {
   LS.setItem('money_theme', theme === 'light' ? 'light' : 'dark');
   applyTheme();
 }
-// withTools: opened from ניהול כספים, so "פריטים וקטגוריות" and "גיבוי" are shown too.
-function openSettings(withTools) {
-  document.getElementById('settingsTools').style.display = withTools === true ? '' : 'none';
+// scope: opened from ניהול כספים ('business', the customers' items) or from אישי ('personal'):
+// then "פריטים וקטגוריות" of that page and "גיבוי" are shown too. From the first page: only the switches.
+let settingsScope = null;
+function openSettings(scope) {
+  settingsScope = scope === 'personal' || scope === 'business' ? scope : null;
+  document.getElementById('settingsTools').style.display = settingsScope ? '' : 'none';
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   document.getElementById('lightThemeSwitch').checked = currentTheme() === 'light';
   document.getElementById('settingsOverlay').classList.add('show');
@@ -2043,14 +2057,17 @@ function showEditWhich(e) {
   which.appendChild(amt);
 }
 // rowEl: the row that was tapped; it stays marked while its edit window is open.
-function openEntryEditor(e, scope, canKind, onSave, rowEl) {
+// isNew: a new entry (its amount starts empty, and saving adds it).
+function openEntryEditor(e, scope, canKind, onSave, rowEl, isNew) {
   closeEntryEditor();
   closeInlineEdits();
-  editing = { e: e, scope: scope, onSave: onSave, row: rowEl || null };
+  editing = { e: e, scope: scope, onSave: onSave, row: rowEl || null, isNew: !!isNew };
   if (rowEl) rowEl.classList.add('editingRow');
-  showEditWhich(e);
+  document.getElementById('editTitle').textContent = isNew ? T().addItemTitle : T().editEntryTitle;
+  document.querySelector('.editDialog').classList.toggle('adding', !!isNew); // adding: the item comes first
+  if (isNew) document.getElementById('editWhich').innerHTML = ''; else showEditWhich(e);
   const spend = e.kind !== 'income';
-  document.getElementById('editAmount').value = e.amount;
+  document.getElementById('editAmount').value = isNew ? '' : e.amount;
   document.getElementById('editDate').value = entryDay(e);
   document.getElementById('editItemRow').style.display = spend ? '' : 'none';
   document.getElementById('editItem').value = spend ? (e.item || '') : '';
@@ -2078,7 +2095,7 @@ async function saveEntryEditor() {
   const ed = editing;
   const e = ed.e;
   const amount = findAmount(document.getElementById('editAmount').value);
-  if (amount === null || amount < 0) { document.getElementById('editMsg').textContent = T().amountBad; return; }
+  if (amount === null || amount < 0 || (ed.isNew && amount === 0)) { document.getElementById('editMsg').textContent = T().amountBad; return; }
   const day = document.getElementById('editDate').value;
   const cat = document.getElementById('editCat').value;
   const item = e.kind !== 'income' ? await resolveTypedItem(ed.scope, document.getElementById('editItem').value, cat) : '';
@@ -2096,6 +2113,20 @@ async function saveEntryEditor() {
 document.getElementById('editAmount').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); saveEntryEditor(); } });
 document.getElementById('editItem').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); saveEntryEditor(); } });
 
+// אישי: "הוספת פריט" - type or pick an item, its amount (and the date), and it is added as personal spending.
+function addPersonalItem() {
+  const now = new Date();
+  const e = { id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), kind: 'job', amount: 0, note: '', date: now.toLocaleDateString(), day: dayKey(now) };
+  openEntryEditor(e, 'personal', false, () => {
+    e.note = e.item || e.cat || '';
+    personal.unshift(e);
+    savePersonal();
+    personalOpen = 'out';
+    renderPersonalPage();
+    document.getElementById('perMsg').textContent = T().addedTo + e.amount.toFixed(2) + ' - ' + T().personalOutKind + (e.item ? ' · ' + e.item : '');
+  }, null, true);
+  setTimeout(() => document.getElementById('editItem').focus(), 0); // start with the item
+}
 // Tapping a row (not its buttons) edits that row right where it is.
 // An expense row: its item and amount. An income row: its amount. Nothing else changes.
 function editOnTap(rowEl, e, onSave, scope) {
@@ -2183,7 +2214,7 @@ function inlineEdit(rowEl, e, onSave, scope) {
 function openItems(scope) {
   const changed = scopeOf(scope) !== itemsScope;
   itemsScope = scope === 'personal' ? 'personal' : 'business';
-  document.getElementById('itemsTitle').textContent = T().itemsTitle + ' - ' + (itemsScope === 'personal' ? T().personalBtn : T().businessTitle);
+  document.getElementById('itemsTitle').textContent = T().itemsTitle + ' - ' + (itemsScope === 'personal' ? T().personalBtn : T().customersLabel);
   const sel = document.getElementById('itemCatSel');
   const keep = !changed && sel.value && sel.value !== '__new__' && getCats().indexOf(sel.value) >= 0;
   fillCatSelect(sel, keep ? sel.value : '');
@@ -3281,6 +3312,8 @@ function withoutActions(sentence) {
 }
 // ---- Business spending: said with "לעסק" ("50 שקל צבע לעסק") on a red mic ----
 const BUSINESS_WORDS = /^(ו?[לב]?ה?עסק|business)$/;
+const CUSTOMER_WORDS = /^(ו?[לב]?ה?לקוח(ות|ה|ים)?|customers?|clients?)$/;
+function saysCustomers(sentence) { return sentenceWords(sentence).some(w => CUSTOMER_WORDS.test(cleanWord(w))); }
 function saysBusiness(sentence) { return sentenceWords(sentence).some(w => BUSINESS_WORDS.test(cleanWord(w))); }
 function isNumberWord(w) {
   const c = w.replace(/^[ו]/, '').replace(/^و/, '');
@@ -3734,7 +3767,7 @@ function showPick(message, options, onCancel) {
   const listenAnswer = () => startVoice(micBtn, micMsg, text => {
     if (done || id !== pickOpenId) return;
     const hit = options.filter(o => o.match && o.match(text));
-    if (hit.length === 1) { close(); hit[0].pick(); return; }
+    if (hit.length === 1) { close(); hit[0].pick(text); return; }
     micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
   });
   micBtn.onclick = listenAnswer;
@@ -3752,9 +3785,20 @@ function askSection(sentence, amount, msg, p, b) {
       addPersonalEntry('job', amount, spendNote(sentence, p.item, null), p.item, p.cat);
       msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.personalOutKind + (p.item || p.cat ? ' · ' + (p.item || p.cat) : '');
     } },
-    { label: t.businessTitle, cls: 'pickBusiness', match: saysBusiness, pick: () => {
-      addBusinessSpend(amount, spendNote(sentence, b.item, null), b.item, b.cat);
-      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (b.item || b.cat ? ' · ' + (b.item || b.cat) : '');
+    // Customers: then which customer (a customer's name said as the answer goes straight to that card).
+    { label: t.customersLabel, cls: 'pickBusiness', match: text => saysCustomers(text) || !!findCard(text, null), pick: text => {
+      const named = text ? findCard(text, null) : null;
+      if (named) {
+        const entry = { kind: 'job', amount: amount, note: cardNote('job', sentence, b.item, named), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+        if (b.item) entry.item = b.item;
+        named.b.entries.unshift(entry);
+        saveBoxes();
+        renderHome();
+        renderSummaries();
+        msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + (b.item ? ' · ' + b.item : '') + ' (' + boxLabel(named.b, named.i) + ')';
+        return;
+      }
+      chooseTarget(sentence, amount, 'job', msg, b.item);
     } }
   ], () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; });
 }
@@ -3832,11 +3876,7 @@ function handleHomeText(sentence, kind, msgEl) {
       msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().personalOutKind + ' · ' + (p.item || p.cat);
       return;
     }
-    if (inB && !inP) {
-      addBusinessSpend(amount, spendNote(sentence, b.item, null), b.item, b.cat);
-      msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.business + ' · ' + (b.item || b.cat);
-      return;
-    }
+    if (inB && !inP) { chooseTarget(sentence, amount, 'job', msg, b.item); return; } // a customers' item: which customer?
     if (inP && inB) { askSection(sentence, amount, msg, p, b); return; }
   }
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.

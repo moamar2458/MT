@@ -242,12 +242,13 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
 #askText { white-space: pre-wrap; text-align: center; font-size: 16px; margin: 0; }
 #syncMsg { position: fixed; bottom: 8px; left: 8px; right: 8px; text-align: center; font-size: 14px; color: white; background: crimson; border-radius: 8px; padding: 6px; display: none; z-index: 70; }
 </style>
+<script>try { if (localStorage.getItem('money_theme') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) { /* none */ }</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
 <style id="voiceWalletTheme">
 /* ===== New look: dark "voice wallet". Only colours and shapes change; the layout and the buttons stay the same. ===== */
 :root {
-  --bg: #0F1117; --surface: #1A1D27; --surface2: #232736; --line: #2E3344;
+  --bg: #0F1117; --surface: #1A1D27; --surface2: #232736; --line: var(--hover);
   --text: #F2F3F7; --muted: #9AA0B4; --soft: #C9CDD9;
   --red: #FF6B5B; --redText: #FF8A7D; --redBg: #1F1315; --redLine: #4A2226;
   --green: #34D399; --greenText: #6EE7B7; --greenBg: #11201B; --greenLine: #1F4A3A;
@@ -255,8 +256,28 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { padding: 
   --blue: #2563EB; --blueText: #93C5FD; --blueBg: #121C2E; --blueLine: #23406E;
   --orange: #FDBA74; --orangeBg: #2A2113; --orangeLine: #4A3518;
   --gold: #FBBF24; --goldBg: #231C0B; --goldLine: #5C4710;
+  --hover: #2E3344; --rowLine: #262A38; --goldText: #FDE68A; --tileHoverLine: #3E4458; --arrowBg: #3A1A1C;
+  --violetDash: #6D5BB8; --violetListen: #2A2148; --greenHover: #163026; --goldInputLine: #8A6A12;
+  --overlay: rgba(5,6,10,0.72); --shadow: rgba(0,0,0,0.55);
   --num: Rubik, Heebo, Arial, sans-serif;
+  color-scheme: dark;
 }
+/* Light style: the same layout with light colours. Chosen in Settings, saved as money_theme. */
+html[data-theme="light"] {
+  --bg: #F4F5F9; --surface: #FFFFFF; --surface2: #EEF0F5; --line: #DCE0E9;
+  --text: #161A24; --muted: #5E6475; --soft: #3A4050;
+  --redText: #C2352A; --redBg: #FFF0EE; --redLine: #F4C3BD;
+  --greenText: #0F7A55; --greenBg: #EAF8F1; --greenLine: #B3E3CD;
+  --violetText: #5B3FC4; --violetBg: #F2EEFF; --violetLine: #D5CAFB;
+  --blueText: #1D4ED8; --blueBg: #EBF2FF; --blueLine: #BCD0F8;
+  --orange: #B45309; --orangeBg: #FFF4E5; --orangeLine: #F2CF9F;
+  --gold: #A16207; --goldBg: #FFF8DB; --goldLine: #EBD382;
+  --hover: #E3E6EE; --rowLine: #E7EAF1; --goldText: #854D0E; --tileHoverLine: #C6CBD8; --arrowBg: #FFE1DC;
+  --violetDash: #A08BE8; --violetListen: #E4DBFF; --greenHover: #D9F2E6; --goldInputLine: #D6AF45;
+  --overlay: rgba(20,24,36,0.45); --shadow: rgba(20,24,36,0.18);
+  color-scheme: light;
+}
+html[data-theme="light"] .tile, html[data-theme="light"] .summaryBox, html[data-theme="light"] #historyBox, html[data-theme="light"] .col.in { box-shadow: 0 1px 3px rgba(20,24,36,0.06); }
 body { background: var(--bg); color: var(--text); font-family: Heebo, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
 h1, h2, h3, .enterBtn, .personalBtn, .startMic, .homeMic, .finishBtn, .tile .name, .total, .amount, .num { font-family: var(--num); }
 button { font-family: inherit; transition: transform .12s ease, background-color .15s ease, box-shadow .2s ease; }
@@ -304,17 +325,17 @@ h1 { font-weight: 800; font-size: 24px; letter-spacing: -0.3px; }
 .personalBtn { height: 48px; margin-top: -8px; border-radius: 16px; border: 1px solid var(--blueLine); background: var(--blueBg); color: var(--blueText); font-size: 17px; }
 
 /* Cards page */
-.homeMic { width: min(320px, 90vw); height: 52px; border-radius: 18px; border: 1.5px dashed #6D5BB8; background: var(--violetBg); color: var(--violetText); font-size: 18px; font-weight: 700; }
-.homeMic.listening { background: #2A2148; }
+.homeMic { width: min(320px, 90vw); height: 52px; border-radius: 18px; border: 1.5px dashed var(--violetDash); background: var(--violetBg); color: var(--violetText); font-size: 18px; font-weight: 700; }
+.homeMic.listening { background: var(--violetListen); }
 .homeMicMsg { color: var(--muted); }
 .tile { border-radius: 22px; background: var(--surface); border: 1px solid var(--line); padding: 14px; gap: 6px; }
-.tile:hover { background: var(--surface2); border-color: #3E4458; }
+.tile:hover { background: var(--surface2); border-color: var(--tileHoverLine); }
 .tile .name { font-size: 17px; font-weight: 700; color: var(--text); margin-top: 10px; }
 .tile .num { font-size: 22px; font-weight: 700; color: var(--orange); direction: ltr; }
 .tile .opened { font-size: 11px; color: var(--muted); }
 .tile .rename, .tile .removeTile { width: 28px; height: 28px; padding: 0; border-radius: 9px; background: var(--surface2); color: var(--soft); font-size: 13px; display: flex; align-items: center; justify-content: center; }
 .tile .removeTile:hover { background: var(--redBg); color: var(--redText); }
-.tile .rename:hover { background: #2E3344; color: var(--text); }
+.tile .rename:hover { background: var(--hover); color: var(--text); }
 body.compactBoxes .tile { border-width: 1px; border-radius: 14px; }
 body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { width: 20px; height: 20px; font-size: 10px; }
 
@@ -327,21 +348,21 @@ body.compactBoxes .tile .rename, body.compactBoxes .tile .removeTile { width: 20
 .viewTab { flex: 1; height: 36px; border: none; border-radius: 10px; background: transparent; color: var(--muted); font-size: 14px; }
 .viewTab.active { background: var(--line); color: var(--text); font-weight: 700; }
 #personalPage .viewTab.active { background: var(--blue); color: #fff; }
-.periodRow { border-bottom: 1px solid #262A38; font-size: 15px; padding: 8px 6px; }
+.periodRow { border-bottom: 1px solid var(--rowLine); font-size: 15px; padding: 8px 6px; }
 .periodRow.head { background: var(--surface); color: var(--muted); font-weight: 500; font-size: 12px; }
-.periodTitle { background: var(--orangeBg); color: #FDE68A; border-radius: 12px; padding: 8px 12px; margin: 10px 0 4px; }
+.periodTitle { background: var(--orangeBg); color: var(--goldText); border-radius: 12px; padding: 8px 12px; margin: 10px 0 4px; }
 #personalPage .periodTitle { background: var(--blueBg); color: var(--blueText); }
-.periodRow.totalRow { background: var(--orangeBg); border-bottom: none; border-radius: 12px; color: #FDE68A; }
+.periodRow.totalRow { background: var(--orangeBg); border-bottom: none; border-radius: 12px; color: var(--goldText); }
 #jobSummaryList .clickRow:hover { background: var(--surface2); }
 #jobSummaryList .clickRow .period { color: var(--orange); }
-.periodDetail { background: var(--bg); border-bottom: 1px solid #262A38; border-radius: 12px; margin: 2px 0 4px; }
+.periodDetail { background: var(--bg); border-bottom: 1px solid var(--rowLine); border-radius: 12px; margin: 2px 0 4px; }
 .detailLine > div:first-child { color: var(--muted); }
 .detailAmount { color: var(--redText); }
 .detailTotal { border-top-color: var(--line); }
-.histRow { border-bottom: 1px solid #262A38; }
+.histRow { border-bottom: 1px solid var(--rowLine); }
 .histRow:hover { background: var(--surface2); }
 .histRow.checked { background: var(--greenBg); }
-.histRow.checked:hover { background: #163026; }
+.histRow.checked:hover { background: var(--greenHover); }
 .histRow.head, .histRow.head:hover { background: var(--surface); color: var(--muted); }
 .histRow .histDates { color: var(--muted); }
 .histRow button { background: var(--violet); color: #160F2E; font-weight: 700; border-radius: 9px; padding: 5px 10px; }
@@ -364,7 +385,7 @@ button.bigMic.listening { background: var(--red); box-shadow: 0 0 0 8px rgba(255
 .typeRow { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 5px; gap: 6px; }
 .typeRow input { flex: 1 1 auto; width: auto; border: none !important; background: transparent; font-family: var(--num); font-size: 18px; padding: 8px 10px; }
 .typeRow input:focus { outline: none; }
-.typeRow button.arrowJob { width: 46px; height: 42px; padding: 0; border-radius: 12px; background: #3A1A1C; color: var(--redText); font-size: 20px; }
+.typeRow button.arrowJob { width: 46px; height: 42px; padding: 0; border-radius: 12px; background: var(--arrowBg); color: var(--redText); font-size: 20px; }
 .heard { color: var(--muted); font-size: 14px; margin: 10px 0; }
 .col { border-radius: 24px; padding: 16px; margin-bottom: 12px; }
 .col.in { background: var(--greenBg); border: 1px solid var(--greenLine); }
@@ -377,9 +398,9 @@ button.bigMic.listening { background: var(--red); box-shadow: 0 0 0 8px rgba(255
 html[dir=ltr] .card .total, html[dir=ltr] .card .amount { text-align: start; }
 .card.moneyInCard .addIncome { top: 10px; right: auto; inset-inline-end: 10px; width: 32px; height: 32px; border-radius: 10px; background: var(--green); color: #062016; font-weight: 700; }
 .tenBar { background: var(--goldBg); border: 1px solid var(--goldLine); }
-.tenBar h3 { color: #FDE68A; }
+.tenBar h3 { color: var(--goldText); }
 .tenBar .amount { color: var(--gold); }
-.tenBar input { background: var(--bg); color: var(--gold); border: 1px solid #8A6A12 !important; border-radius: 8px; font-family: var(--num); }
+.tenBar input { background: var(--bg); color: var(--gold); border: 1px solid var(--goldInputLine) !important; border-radius: 8px; font-family: var(--num); }
 .jobCard { background: var(--redBg); border: 1px solid var(--redLine); }
 .jobCard h3 { color: var(--redText); }
 .listTitle { color: var(--muted); text-align: start; font-size: 12px; margin: 6px 2px; }
@@ -389,7 +410,7 @@ li { background: var(--bg); border-radius: 14px; color: var(--text); }
 .entryList strong { font-family: var(--num); }
 button.edit, button.del { width: 36px; height: 36px; padding: 0; border-radius: 10px; background: var(--surface2); color: var(--soft); font-size: 14px; }
 button.del:hover { background: var(--redBg); color: var(--redText); }
-button.edit:hover { background: #2E3344; color: var(--text); }
+button.edit:hover { background: var(--hover); color: var(--text); }
 .belowRow { align-items: stretch; gap: 12px; }
 .afterJobBox { background: var(--surface); border: 1px solid var(--orangeLine); border-radius: 20px; padding: 12px 14px; }
 .afterJobBox h3 { color: var(--muted); font-size: 12px; }
@@ -402,15 +423,15 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 #personalPage h1 { color: var(--blueText); }
 #personalCards .card { background: var(--blueBg); border: 1px solid var(--blueLine); }
 #personalList { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 8px; }
-.perLine { border-bottom: 1px solid #262A38; padding: 10px 6px; }
+.perLine { border-bottom: 1px solid var(--rowLine); padding: 10px 6px; }
 .perLine .perDate { color: var(--muted); font-size: 12px; }
 .perLine strong { font-family: var(--num); }
 .perTotal { background: var(--blueBg); border-bottom: none; border-radius: 12px; color: var(--blueText); padding: 8px 4px; }
 .perTotal span { color: var(--muted); }
 
 /* Windows that open on top */
-#nameOverlay, #askOverlay, #pickOverlay { background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); }
-.nameDialog { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.55); color: var(--text); }
+#nameOverlay, #askOverlay, #pickOverlay { background: var(--overlay); backdrop-filter: blur(4px); }
+.nameDialog { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 20px; box-shadow: 0 20px 60px var(--shadow); color: var(--text); }
 .nameDialog h3 { font-size: 18px; }
 .nameDialog input { background: var(--bg); color: var(--text); border-radius: 14px; padding: 12px; }
 .nameMic { background: var(--violet); color: #160F2E; }
@@ -418,14 +439,14 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 .nameMicMsg { color: var(--muted); }
 .nameDialog .savedTitle { color: var(--muted); font-size: 13px; }
 .savedItem button.pick { background: var(--surface2); border: 1px solid var(--line); color: var(--text); border-radius: 14px; }
-.savedItem button.pick:hover { background: #2E3344; }
+.savedItem button.pick:hover { background: var(--hover); }
 .savedItem button.forget { background: var(--surface2); color: var(--soft); border-radius: 14px; }
 .dialogButtons button { height: 46px; padding: 0 22px; border-radius: 14px; font-weight: 700; }
 .dialogButtons .okBtn { background: var(--green); color: #062016; }
 .dialogButtons .cancelBtn { background: transparent; border: 1px solid var(--line); color: var(--soft); }
 #askText, #pickText { color: var(--text); line-height: 1.6; }
 #pickList button { min-height: 52px; background: var(--surface2); border: 1px solid var(--line); color: var(--text); border-radius: 16px; font-family: var(--num); font-weight: 500; }
-#pickList button:hover { background: #2E3344; border-color: var(--orange); }
+#pickList button:hover { background: var(--hover); border-color: var(--orange); }
 #pickList button.pickPersonal { background: var(--blue); border-color: var(--blue); color: #fff; }
 #loadingPage { color: var(--muted); }
 #loadingPage button { background: var(--violet); color: #160F2E; border-radius: 14px; font-weight: 700; }
@@ -440,11 +461,11 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 #personalList .periodRow .period { color: var(--blueText); }
 
 /* What was bought: a small tag under the words */
-.itemChip { display: inline-block; align-self: flex-start; margin-top: 3px; padding: 2px 9px; border-radius: 10px; background: var(--goldBg); border: 1px solid var(--goldLine); color: #FDE68A; font-size: 12px; font-weight: 500; line-height: 1.5; }
+.itemChip { display: inline-block; align-self: flex-start; margin-top: 3px; padding: 2px 9px; border-radius: 10px; background: var(--goldBg); border: 1px solid var(--goldLine); color: var(--goldText); font-size: 12px; font-weight: 500; line-height: 1.5; }
 .perNote .itemChip { display: table; }
 
 /* Items and categories window */
-#itemsOverlay { display: none; position: fixed; inset: 0; background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
+#itemsOverlay { display: none; position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
 #itemsOverlay.show { display: flex; }
 .itemsDialog { width: 380px; }
 .itemAddRow { display: flex; gap: 8px; }
@@ -456,14 +477,14 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 .itemRow select { height: 40px; font-size: 13px; }
 .itemName { height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface2); color: var(--text); font-size: 15px; text-align: start; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .itemName:hover { border-color: var(--gold); }
-.itemsOpenBtn { color: #FDE68A; border-color: var(--goldLine); }
+.itemsOpenBtn { color: var(--goldText); border-color: var(--goldLine); }
 #personalPage .itemsOpenBtn { display: block; margin: 14px auto 20px; }
 
 /* Settings: the gear at the top right of the first page, and its window */
 .settingsBtn { position: fixed; top: 8px; right: 8px; z-index: 10; width: 44px; height: 44px; padding: 0; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 22px; display: none; align-items: center; justify-content: center; cursor: pointer; }
 .settingsBtn.show { display: flex; }
 .settingsBtn:hover { background: var(--surface2); }
-#settingsOverlay { display: none; position: fixed; inset: 0; background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
+#settingsOverlay { display: none; position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
 #settingsOverlay.show { display: flex; }
 .settingsDialog { width: min(360px, 92vw); }
 .switchRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; cursor: pointer; text-align: start; }
@@ -508,6 +529,11 @@ button.edit:hover { background: #2E3344; color: var(--text); }
     <label class="switchRow">
       <span class="switchText"><span class="switchLabel" data-t="hideHints"></span><span class="switchNote" data-t="hideHintsNote"></span></span>
       <input type="checkbox" id="hideHintsSwitch" role="switch" onchange="setHintsHidden(this.checked)">
+      <span class="switchTrack" aria-hidden="true"></span>
+    </label>
+    <label class="switchRow">
+      <span class="switchText"><span class="switchLabel" data-t="lightTheme"></span><span class="switchNote" data-t="lightThemeNote"></span></span>
+      <input type="checkbox" id="lightThemeSwitch" role="switch" onchange="setTheme(this.checked ? 'light' : 'dark')">
       <span class="switchTrack" aria-hidden="true"></span>
     </label>
     <div class="dialogButtons"><button class="cancelBtn" onclick="closeSettings()" data-t="closeBtn"></button></div>
@@ -660,7 +686,7 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -1034,6 +1060,8 @@ const TEXT = {
     settingsTitle: 'הגדרות',
     hideHints: 'הסתרת טקסט ההסברים',
     hideHintsNote: 'מסתיר את ההוראות שמסבירות מה לומר בכל המסכים',
+    lightTheme: 'עיצוב בהיר',
+    lightThemeNote: 'כבוי = עיצוב כהה',
     kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
     micLang: 'he-IL',
     button: 'EN',
@@ -1173,6 +1201,8 @@ const TEXT = {
     settingsTitle: 'Settings',
     hideHints: 'Hide instruction text',
     hideHintsNote: 'Hides the help text that tells you what to say, on every screen',
+    lightTheme: 'Light style',
+    lightThemeNote: 'Off = dark style',
     kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
     micLang: 'en-GB',
     button: '\u05E2\u05D1',
@@ -1233,6 +1263,7 @@ function applyLang() {
   document.getElementById('settingsBtn').title = t.settingsBtn;
   document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
+  applyTheme();
   const startMsgEl = document.getElementById('startMsg');
   if (isHintText(startMsgEl.textContent)) startMsgEl.textContent = hint('startHint');
   heard.textContent = '';
@@ -1267,8 +1298,22 @@ function applyHints() {
   if (itemMsg.textContent === '' || isHintText(itemMsg.textContent)) itemMsg.textContent = hint('sayItemHint');
   renderPersonalPage();
 }
+// ---- Settings: light or dark style. Saved as money_theme ('light' or 'dark'). ----
+function currentTheme() { return LS.getItem('money_theme') === 'light' ? 'light' : 'dark'; }
+function applyTheme() {
+  const light = currentTheme() === 'light';
+  if (light) document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
+  document.getElementById('lightThemeSwitch').checked = light;
+  // Also kept in this browser's own storage, so the page opens in the right style before the data has loaded.
+  try { localStorage.setItem('money_theme', light ? 'light' : 'dark'); } catch (e) { /* none */ }
+}
+function setTheme(theme) {
+  LS.setItem('money_theme', theme === 'light' ? 'light' : 'dark');
+  applyTheme();
+}
 function openSettings() {
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
+  document.getElementById('lightThemeSwitch').checked = currentTheme() === 'light';
   document.getElementById('settingsOverlay').classList.add('show');
   document.getElementById('hideHintsSwitch').focus();
 }
@@ -2149,6 +2194,8 @@ function drawSavedNames() {
 function sayName() {
   const msg = document.getElementById('nameMicMsg');
   startVoice(document.getElementById('nameMic'), msg, text => {
+    // "קיבלתי 500 שקל" is money in, never a card name: close the window and save it as income.
+    if (nameIsIncome(text)) return;
     const input = document.getElementById('nameInput');
     input.value = String(text || '').trim().replace(/[.!?,]+$/, '').slice(0, 40);
     msg.textContent = '';
@@ -2156,8 +2203,19 @@ function sayName() {
     input.focus();
   });
 }
+// Said or typed "קיבלתי 500 שקל" in the name window: that is money in, never a card name.
+// The window closes and the amount is saved as income (to the open card, or to the card named in the sentence).
+function nameIsIncome(text) {
+  if (sentenceAction(text) !== 'income') return false;
+  nameCallback = null;
+  closeNameDialog(null);
+  if (currentId) handleText(text);
+  else handleHomeText(text, 'income', document.getElementById('startPage').style.display === 'flex' ? document.getElementById('startMsg') : document.getElementById('homeMicMsg'));
+  return true;
+}
 function submitNameDialog() {
   const clean = document.getElementById('nameInput').value.trim();
+  if (nameIsIncome(clean)) return;
   closeNameDialog(clean === '' ? null : clean);
 }
 function closeNameDialog(name) {
@@ -2454,6 +2512,7 @@ async function addIncome() {
 // Typing a number and pressing the red arrow adds it to job spending.
 function addArrow(kind) {
   const box = document.getElementById('typed');
+  kind = sentenceAction(box.value) || kind; // typed "קיבלתי 500 שקל" is money in
   const amount = findAmount(box.value);
   if (amount === null) { heard.textContent = T().typeFirst; return; }
   addEntry(kind, amount, T().typedNote + amount.toFixed(2));
@@ -2822,6 +2881,8 @@ document.getElementById('startGreen').onclick = () => startVoice(document.getEle
 function addBoxByName(name) {
   name = String(name || '').trim().replace(/[.!?,]+$/, '');
   if (!name) { startMsg.textContent = T().cantHear; return; }
+  // "קיבלתי 500 שקל" said on the purple mic is money in, not the name of a new card.
+  if (sentenceAction(name) === 'income') { handleHomeText(name, 'income', startMsg); return; }
   boxes.push({ id: 'b' + Date.now(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
   rememberName(name);
   saveBoxes();

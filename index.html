@@ -489,6 +489,23 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 .clearHistoryBtn:hover { background: var(--redBg); color: var(--red); border-color: var(--red); }
 #businessBox.closed { padding: 6px 10px; }
 body.businessOpen #home, body.businessOpen .homeMicRow { display: none !important; }
+/* "+ כרטיס חדש": half size, in the top line between the back button and the language button */
+#homeMicBtn.homeMic { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; width: min(160px, calc(100vw - 196px)); height: 44px; padding: 0 10px; font-size: 15px; border-radius: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#homeMicBtn.homeMic:active { transform: translateX(-50%) scale(0.97); }
+.homeMicRow { margin-bottom: 0; }
+.homeMicMsg:empty { display: none; }
+/* עסק: the business spending lines have their amount, correct and delete buttons together */
+.bizTools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.bizSpendLine { cursor: default; }
+/* Inside a card: "הוצאות עבודה" folds; closed it shows only its title */
+.jobSection { background: var(--redBg); border: 1px solid var(--redLine); border-radius: 16px; margin-bottom: 10px; }
+.jobToggle { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: none; border: none; padding: 12px 14px; color: var(--redText); font-family: var(--num); font-size: 15px; font-weight: 700; cursor: pointer; text-align: start; }
+.jobToggle::after { content: '\25B4'; }
+.jobSection.closed .jobToggle::after { content: '\25BE'; }
+.jobSection.closed .jobBody { display: none; }
+.jobBody { padding: 0 12px 12px; }
+.jobBody .total { font-family: var(--num); font-size: 24px; font-weight: 700; direction: ltr; text-align: end; margin-bottom: 4px; }
+html[dir=ltr] .jobBody .total { text-align: start; }
 #businessBox:not(.closed) .summaryList { max-height: 52vh; }
 .bizTitle { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
 .bizTitle .foldSum { direction: ltr; }
@@ -702,15 +719,15 @@ body.businessOpen #home, body.businessOpen .homeMicRow { display: none !importan
         </div>
       </div>
       <ul id="listIncome" class="entryList"></ul>
-      <!-- Job spending: its total, then the list -->
-      <div class="cards">
-        <div class="card jobCard">
-          <h3 data-t="jobSpending"></h3>
+      <!-- Job spending: closed, only its title. A click opens its total and list; another click closes it. -->
+      <div class="jobSection closed" id="jobSection">
+        <button class="jobToggle" id="jobToggle" type="button" onclick="toggleJobSection()" aria-expanded="false"><span data-t="jobSpending"></span></button>
+        <div class="jobBody">
           <div class="total personal" id="tJob">0.00</div>
+          <div class="listTitle" data-t="jobList"></div>
+          <ul id="listJob" class="entryList"></ul>
         </div>
       </div>
-      <div class="listTitle" data-t="jobList"></div>
-      <ul id="listJob" class="entryList"></ul>
     </div>
 
     <div class="belowRow">
@@ -733,7 +750,7 @@ body.businessOpen #home, body.businessOpen .homeMicRow { display: none !importan
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -844,6 +861,7 @@ document.addEventListener('visibilitychange', async () => {
   lang = LS.getItem('money_lang') || 'he';
   boxes = loadBoxes();
   personal = loadPersonal();
+  businessSpend = loadBusiness();
   if (currentId && !cur()) closeApp();
   applyLang();
 });
@@ -1076,7 +1094,7 @@ const TEXT = {
     personalEmpty: 'עדיין אין רישומים אישיים. במיקרופון האדום או הירוק אמרו סכום ואחריו "אישי", למשל "מאה אישי".',
     newCardBtn: '+ כרטיס חדש',
     newCardAdded: 'נפתח כרטיס חדש: ',
-    startHint: 'אדום וירוק: אמרו סכום, שם ומה קניתם, למשל "דוד 50 שקל צבע", או סכום ו"אישי". סגול: אמרו שם לכרטיס חדש. לחיצה נוספת על המיקרופון עוצרת את ההקלטה.',
+    startHint: 'אדום וירוק: אמרו סכום, שם ומה קניתם, למשל "דוד 50 שקל צבע", או סכום ו"אישי". הוצאה של העסק: הוסיפו "לעסק", למשל "50 שקל צבע לעסק". סגול: אמרו שם לכרטיס חדש. לחיצה נוספת על המיקרופון עוצרת את ההקלטה.',
     syncError: 'השמירה לא הצליחה. בדקו את החיבור לאינטרנט, מנסה שוב...',
     loadError: 'לא הצלחתי לטעון את הנתונים. בדקו את החיבור לאינטרנט.',
     stopping: 'עוצר...',
@@ -1112,11 +1130,12 @@ const TEXT = {
     clearHistory: 'נקה היסטוריה',
     clearHistorySure: 'למחוק את כל ההיסטוריה?',
     bizIncome: 'הכנסות',
-    bizSpending: 'הוצאות',
+    bizSpending: 'הוצאות העסק',
+    bizJobs: 'נשאר מעבודות שהסתיימו',
     bizNone: 'אין עדיין.',
     noPersonalIn: 'עדיין אין הכנסות אישיות.',
     lightThemeNote: 'כבוי = עיצוב כהה',
-    kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
+    kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית', business: 'הוצאות העסק' },
     micLang: 'he-IL',
     button: 'EN',
     dir: 'rtl'
@@ -1224,7 +1243,7 @@ const TEXT = {
     personalEmpty: 'No personal entries yet. On the red or green mic, say an amount and then "personal", for example "100 personal".',
     newCardBtn: '+ New card',
     newCardAdded: 'New card opened: ',
-    startHint: 'Red and green: say an amount, a name and what you bought, for example "David 50 shekel paint", or an amount and "personal". Purple: say a name for a new card. Press the mic again to stop recording.',
+    startHint: 'Red and green: say an amount, a name and what you bought, for example "David 50 shekel paint", or an amount and "personal". Business spending: add "business", for example "50 shekel paint business". Purple: say a name for a new card. Press the mic again to stop recording.',
     syncError: 'Saving did not work. Check your internet connection, trying again...',
     loadError: 'Could not load your data. Check your internet connection.',
     stopping: 'Stopping...',
@@ -1260,11 +1279,12 @@ const TEXT = {
     clearHistory: 'Clear history',
     clearHistorySure: 'Delete all the history?',
     bizIncome: 'Income',
-    bizSpending: 'Spending',
+    bizSpending: 'Business spending',
+    bizJobs: 'Left from finished jobs',
     bizNone: 'Nothing yet.',
     noPersonalIn: 'No personal income yet.',
     lightThemeNote: 'Off = dark style',
-    kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
+    kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending', business: 'Business spending' },
     micLang: 'en-GB',
     button: '\u05E2\u05D1',
     dir: 'ltr'
@@ -1410,6 +1430,20 @@ function saysPersonal(sentence) {
   const words = String(sentence || '').toLowerCase().replace(/[.,!?;:"'()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
   return words.some(w => PERSONAL_WORDS.some(re => re.test(w)));
 }
+// Saved as money_business: [{ id, amount, note, item, date, day }]
+let businessSpend = [];
+function loadBusiness() {
+  try { const l = JSON.parse(LS.getItem('money_business') || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.amount === 'number') : []; } catch (e) { return []; }
+}
+function saveBusiness() { LS.setItem('money_business', JSON.stringify(businessSpend)); }
+function addBusinessSpend(amount, note, item) {
+  const now = new Date();
+  const entry = { id: 'z' + Date.now(), amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
+  if (item) entry.item = item;
+  businessSpend.unshift(entry);
+  saveBusiness();
+  renderBusiness();
+}
 function addPersonalEntry(kind, amount, note, item) {
   const now = new Date();
   const entry = { id: 'p' + Date.now(), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
@@ -1474,7 +1508,8 @@ function editDistance(a, b) {
 // Words that are not the item: "שקל", "ש״ח", "על"...
 const FILLER_WORDS = ['שקל', 'שקלים', 'שח', 'ש"ח', 'ש״ח', '₪', 'nis', 'ils', 'shekel', 'shekels', 'sheqel', 'על', 'של', 'for', 'of', 'on', 'את'];
 function sentenceWords(sentence) {
-  return String(sentence || '').toLowerCase().replace(/[.,!?;:()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
+  // A number stuck to a word ("קיבלתי200", "200שקל") is split off first.
+  return String(sentence || '').toLowerCase().replace(/([^\d\s.,])(\d)/g, '$1 $2').replace(/(\d)([^\d\s.,%])/g, '$1 $2').replace(/[.,!?;:()\-،؟]/g, ' ').split(/\s+/).filter(Boolean);
 }
 // Finds the item from the list that sounds closest to words in what was said.
 // Returns { name, used: [the word positions it took] }, or null when nothing is close enough.
@@ -1874,45 +1909,78 @@ function periodLabel(key, view) {
   return start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ' - ' + end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 function cell(text, cls) { const c = document.createElement('div'); if (cls) c.className = cls; c.textContent = text; return c; }
-// ---- עסק: all the money in and all the spending of every card (open and finished), newest first ----
+// ---- עסק: finished jobs only, each with what is left (income after job spending), then the business spending ----
 function renderBusiness() {
   const t = T();
   const box = document.getElementById('businessList');
   box.innerHTML = '';
-  const income = [], spending = [];
-  boxes.forEach((b, i) => (b.entries || []).forEach(e => {
-    if (e.kind === 'income') income.push({ e: e, b: b, i: i });
-    else if (e.kind === 'job') spending.push({ e: e, b: b, i: i });
-  }));
-  const newest = (x, y) => (y.e.day || '').localeCompare(x.e.day || '');
-  const total = list => list.reduce((s, x) => s + x.e.amount, 0);
-  const tIn = total(income), tOut = total(spending);
-  [[t.bizIncome, income, tIn, true], [t.bizSpending, spending, tOut, false]].forEach(part => {
+  const money = v => (v < 0 ? '-' : '+') + Math.abs(v).toFixed(2);
+  const section = (text, sum, cls) => {
     const title = document.createElement('div');
-    title.className = 'periodTitle bizTitle ' + (part[3] ? 'bizIn' : 'bizOut');
-    title.append(cell(part[0]), cell((part[3] ? '+' : '-') + part[2].toFixed(2), 'foldSum'));
+    title.className = 'periodTitle bizTitle ' + cls;
+    title.append(cell(text), cell(money(sum), 'foldSum'));
     box.appendChild(title);
-    if (!part[1].length) { box.appendChild(cell(t.bizNone, 'savedTitle')); return; }
-    part[1].slice().sort(newest).forEach(x => {
-      const row = document.createElement('div');
-      row.className = 'bizLine';
-      row.title = boxLabel(x.b, x.i);
-      row.onclick = () => openApp(x.b.id); // click a line to open its card
-      const text = document.createElement('div');
-      text.className = 'bizText';
-      text.append(cell(boxLabel(x.b, x.i) + (x.b.finished ? ' ✓' : ''), 'bizName'), cell(shownNote(x.e), 'bizNote'));
-      if (itemTag(x.e)) text.appendChild(cell(itemTag(x.e), 'itemChip'));
-      text.appendChild(cell(x.e.date || '', 'bizDate'));
-      const amt = document.createElement('strong');
-      amt.className = part[3] ? 'income' : 'personal';
-      amt.textContent = (part[3] ? '+' : '-') + x.e.amount.toFixed(2);
-      row.append(text, amt);
-      box.appendChild(row);
-    });
+  };
+  // Finished jobs
+  const done = boxes.map((b, i) => ({ b: b, i: i })).filter(x => x.b.finished)
+    .sort((x, y) => (y.b.finishedDay || '').localeCompare(x.b.finishedDay || ''));
+  const leftOf = b => { const tt = boxTotals(b); return tt.income - tt.job; };
+  const tLeft = done.reduce((s, x) => s + leftOf(x.b), 0);
+  section(t.bizJobs, tLeft, 'bizIn');
+  if (!done.length) box.appendChild(cell(t.noHistory, 'savedTitle'));
+  done.forEach(x => {
+    const v = leftOf(x.b);
+    const row = document.createElement('div');
+    row.className = 'bizLine';
+    row.onclick = () => openApp(x.b.id); // click a job to open its card
+    const text = document.createElement('div');
+    text.className = 'bizText';
+    text.append(cell(boxLabel(x.b, x.i), 'bizName'), cell(t.finishedOn + x.b.finished, 'bizDate'));
+    const amt = document.createElement('strong');
+    amt.className = v < 0 ? 'personal' : 'income';
+    amt.textContent = money(v);
+    row.append(text, amt);
+    box.appendChild(row);
+  });
+  // Business spending ("50 שקל צבע לעסק")
+  const tSpend = businessSpend.reduce((s, x) => s + x.amount, 0);
+  section(t.bizSpending, -tSpend, 'bizOut');
+  if (!businessSpend.length) box.appendChild(cell(t.bizNone, 'savedTitle'));
+  businessSpend.slice().sort((x, y) => (y.day || '').localeCompare(x.day || '')).forEach(x => {
+    const row = document.createElement('div');
+    row.className = 'bizLine bizSpendLine';
+    const text = document.createElement('div');
+    text.className = 'bizText';
+    text.append(cell(x.item || x.note || '', 'bizName'), cell(x.date || '', 'bizDate'));
+    const amt = document.createElement('strong');
+    amt.className = 'personal';
+    amt.textContent = '-' + x.amount.toFixed(2);
+    const edit = document.createElement('button');
+    edit.className = 'edit';
+    edit.title = t.editTitle;
+    edit.textContent = '✎';
+    edit.onclick = async () => {
+      const answer = await askText(T().editPrompt + x.amount.toFixed(2) + '):', x.amount);
+      if (answer === null) return;
+      const fixed = findAmount(answer);
+      if (fixed === null) return;
+      x.amount = fixed;
+      saveBusiness();
+      renderBusiness();
+    };
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '\u2715';
+    del.onclick = () => { businessSpend = businessSpend.filter(y => y !== x); saveBusiness(); renderBusiness(); };
+    const tools = document.createElement('div');
+    tools.className = 'bizTools';
+    tools.append(amt, edit, del);
+    row.append(text, tools);
+    box.appendChild(row);
   });
   const left = document.createElement('div');
   left.className = 'periodRow totalRow bizTotal';
-  left.append(cell(t.colLeft, 'period'), cell((tIn - tOut).toFixed(2)));
+  left.append(cell(t.colLeft, 'period'), cell((tLeft - tSpend).toFixed(2)));
   box.appendChild(left);
 }
 function renderSummaries() {
@@ -2457,9 +2525,7 @@ function makeRow(e, i) {
   const date = document.createElement('span');
   date.className = 'entryDate';
   date.textContent = e.date || '';
-  text.append(note);
-  if (itemTag(e)) text.appendChild(cell(itemTag(e), 'itemChip'));
-  text.append(date);
+  text.append(note, date); // no category tag in the card
   const amt = document.createElement('strong');
   amt.className = e.kind === 'job' ? 'personal' : e.kind;
   amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
@@ -2539,19 +2605,43 @@ const LINK_WORDS = ['מ', 'מן', 'מאת', 'ל', 'אל', 'את', 'אצל', 'ע�
 function cleanWord(w) { return String(w || '').toLowerCase().trim(); }
 function isAction(w, list) { const c = cleanWord(w); return list.some(re => re.test(c)); }
 function saysShekel(sentence) { return sentenceWords(sentence).some(w => SHEKEL_WORDS.test(cleanWord(w)) || /₪/.test(w)); }
+// "קיבלתי" as the speech service may write it: with a letter more or less ("קיבלתיי", "כיבלתי"),
+// split in two ("קי בלתי") or in English letters ("kibalti").
+const RECEIVED_BASES = ['קיבלתי', 'קבלתי', 'קיבלנו', 'קבלנו'];
+function isReceivedWord(w) {
+  if (isAction(w, INCOME_ACTIONS)) return true;
+  const n = normWord(w).replace(/^[ושה]/, '');
+  // At least 5 letters, so short words like "קבלן" (contractor) or "קבלה" (receipt) never count.
+  if (n.length >= 5 && RECEIVED_BASES.some(base => editDistance(n, base) <= 1)) return true;
+  return /^(k|q|c)h?[ie]?b+[ae]?l+[ae]?t+(i|y|ee|ie)$/.test(cleanWord(w));
+}
+// Positions of the words that make up "קיבלתי" (one word, or two words that belong together).
+function receivedPositions(words) {
+  const at = [];
+  words.forEach((w, i) => {
+    if (isReceivedWord(w)) at.push(i);
+    else if (i + 1 < words.length && !isReceivedWord(words[i + 1]) && isReceivedWord(w + words[i + 1])) at.push(i, i + 1);
+  });
+  return at;
+}
 // What the sentence asks for: 'income', 'job', or '' when it does not say.
 // "קיבלתי" with an amount or the word "שקל" ALWAYS means money in, whichever mic was used.
 function sentenceAction(sentence) {
   const words = sentenceWords(sentence);
-  const received = words.some(w => isAction(w, INCOME_ACTIONS));
+  const received = receivedPositions(words).length > 0;
   if (received && (findAmount(sentence) !== null || saysShekel(sentence))) return 'income';
   if (!received && words.some(w => isAction(w, SPEND_ACTIONS))) return 'job';
   return '';
 }
 // The sentence without the action words, so they are not mistaken for an item or a name.
 function withoutActions(sentence) {
-  return sentenceWords(sentence).filter(w => !isAction(w, INCOME_ACTIONS) && !isAction(w, SPEND_ACTIONS)).join(' ');
+  const words = sentenceWords(sentence);
+  const received = receivedPositions(words);
+  return words.filter((w, i) => received.indexOf(i) < 0 && !isAction(w, SPEND_ACTIONS)).join(' ');
 }
+// ---- Business spending: said with "לעסק" ("50 שקל צבע לעסק") on a red mic ----
+const BUSINESS_WORDS = /^(ו?[לב]?ה?עסק|business)$/;
+function saysBusiness(sentence) { return sentenceWords(sentence).some(w => BUSINESS_WORDS.test(cleanWord(w))); }
 function isNumberWord(w) {
   const c = w.replace(/^[ו]/, '').replace(/^و/, '');
   return (w in NUMBER_WORDS) || (c in NUMBER_WORDS) || HUNDRED_WORDS.indexOf(w) >= 0 || HUNDRED_WORDS.indexOf(c) >= 0 || THOUSAND_WORDS.indexOf(w) >= 0 || THOUSAND_WORDS.indexOf(c) >= 0;
@@ -2624,7 +2714,7 @@ function spendNote(sentence, item, card) {
   if (item) return item;
   const cardParts = card ? boxLabel(card.b, card.i).split(/\s+/).filter(Boolean).map(normWord) : [];
   return sentenceWords(withoutActions(sentence)).map(w => w.replace(/["'״׳`]/g, ''))
-    .filter(w => w && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w) && !saysPersonal(w)
+    .filter(w => w && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w) && !saysPersonal(w) && !BUSINESS_WORDS.test(w)
       && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0
       && !(cardParts.length && wordForms(w).some(f => cardParts.indexOf(f) >= 0)))
     .join(' ');
@@ -2649,6 +2739,11 @@ function handleText(sentence) {
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
   const kind = sentenceAction(sentence) || 'job';
   const item = kind === 'job' ? findItem(withoutActions(sentence)) : null;
+  if (kind === 'job' && saysBusiness(sentence)) { // "... לעסק": business spending, not this card
+    addBusinessSpend(amount, spendNote(sentence, item ? item.name : '', null), item ? item.name : '');
+    heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (item ? ' · ' + item.name : '');
+    return;
+  }
   addEntry(kind, amount, cardNote(kind, sentence, item ? item.name : '', null), item ? item.name : '');
   heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
 }
@@ -2738,7 +2833,7 @@ async function doRestoreBackup(box) {
 
 // ---- Backup to a file, and load it back without doubles ----
 async function saveBackupFile() {
-  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames(), items: getItems(), cats: getCats() }, null, 1);
+  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames(), items: getItems(), cats: getCats(), business: businessSpend }, null, 1);
   const blob = new Blob([data], { type: 'application/json' });
   const stamp = new Date().toISOString().slice(0, 10);
   const fileName = 'money-tracker-backup-' + stamp + '.json';
@@ -2828,6 +2923,12 @@ function loadBackupFile(event) {
       data.items.forEach(it => { if (it && typeof it.name === 'string' && it.name && !list.some(x => normKey(x.name) === normKey(it.name))) list.push({ name: it.name, cat: typeof it.cat === 'string' ? it.cat : '' }); });
       saveItems(list);
     }
+    if (Array.isArray(data.business)) {
+      const have = new Set(businessSpend.map(x => x.id));
+      data.business.forEach(x => { if (x && typeof x.amount === 'number' && !have.has(x.id)) { businessSpend.push(x); have.add(x.id); } });
+      saveBusiness();
+      renderBusiness();
+    }
     if (Array.isArray(data.cats)) { const cats = getCats(); data.cats.forEach(c => { if (typeof c === 'string' && c && cats.indexOf(c) < 0) cats.push(c); }); saveCats(cats); }
     saveBoxes();
     renderHome();
@@ -2851,6 +2952,12 @@ function applyPanels() {
   document.body.classList.toggle('businessOpen', openPanel === 'business'); // "עסק" open: the small customer cards are hidden
 }
 
+function toggleJobSection(open) {
+  const sec = document.getElementById('jobSection');
+  const willOpen = open === undefined ? sec.classList.contains('closed') : open;
+  sec.classList.toggle('closed', !willOpen);
+  document.getElementById('jobToggle').setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
 // Leaving a page: close everything that was opened on it (panels, folded lists, menus, windows, the mic),
 // so the page starts fresh the next time.
 function resetPageState() {
@@ -2875,8 +2982,9 @@ function resetPageState() {
   document.getElementById('bm').style.display = 'none';
   document.getElementById('fileMsg').textContent = '';
   document.getElementById('homeMicMsg').textContent = '';
-  // Inside a card: the typed number and the last message
+  // Inside a card: the typed number, the last message, and "הוצאות עבודה" closed again
   document.getElementById('typed').value = '';
+  toggleJobSection(false);
   heard.textContent = '';
   if (booted) { renderSummaries(); renderPersonalPage(); }
   window.scrollTo(0, 0);
@@ -2980,6 +3088,12 @@ function handleHomeText(sentence, kind, msgEl) {
   // Spending can also say what it was for ("דוד 50 שקל צבע"): find the closest item from the list.
   const itemMatch = kind === 'income' ? null : findItem(plain);
   const item = itemMatch ? itemMatch.name : '';
+  // Spending with "לעסק" goes to the business spending (shown in "עסק"), not to a card.
+  if (kind === 'job' && saysBusiness(sentence)) {
+    addBusinessSpend(amount, spendNote(sentence, item, null), item);
+    msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.business + (item ? ' · ' + item : '');
+    return;
+  }
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
     addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
@@ -3022,6 +3136,7 @@ async function boot() {
   lang = LS.getItem('money_lang') || 'he';
   boxes = loadBoxes();
   personal = loadPersonal();
+  businessSpend = loadBusiness();
   seedItems();
   loading.style.display = 'none';
   applyLang();

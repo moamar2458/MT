@@ -205,7 +205,7 @@
 #homeRow { max-height: none; }
 #homeRow #home { height: 314px; }
 /* Compact: one row (68px + 8px padding), then it scrolls inside */
-body.compactBoxes #homeRow #home { height: 78px; padding-top: 4px; padding-bottom: 4px; gap: 8px; }
+body.compactBoxes #homeRow #home { min-height: 0; height: 78px; padding-top: 4px; padding-bottom: 4px; gap: 8px; }
 body.compactBoxes .tile { width: 110px; height: 68px; border-width: 2px; border-radius: 12px; gap: 0; padding: 4px; }
 body.compactBoxes .tile .name { font-size: 14px; margin-top: 8px; }
 body.compactBoxes .tile .num { font-size: 15px; }
@@ -490,8 +490,30 @@ button.edit:hover { background: var(--hover); color: var(--text); }
 #businessBox.closed { padding: 6px 10px; }
 body.businessOpen #home, body.businessOpen .homeMicRow { display: none !important; }
 /* "+ כרטיס חדש": half size, in the top line between the back button and the language button */
-#homeMicBtn.homeMic { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; width: min(160px, calc(100vw - 196px)); height: 44px; padding: 0 10px; font-size: 15px; border-radius: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#homeMicBtn.homeMic:active { transform: translateX(-50%) scale(0.97); }
+#homeMicBtn.homeMic { position: fixed; top: 8px; left: 62px; right: 132px; margin: 0 auto; transform: none; z-index: 10; width: min(160px, calc(100vw - 194px)); height: 44px; padding: 0 10px; font-size: 15px; border-radius: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#homeMicBtn.homeMic:active { transform: scale(0.97); }
+/* The gear between "+ כרטיס חדש" and the back button */
+.cardsGear { position: fixed; top: 8px; right: 80px; z-index: 10; width: 44px; height: 44px; padding: 0; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.cardsGear:hover { background: var(--surface2); }
+.settingsTools { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 0 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.settingsTools .fileBtn { width: 100%; }
+.backupMenu { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.backupMenu[style*="none"] { display: none !important; }
+.settingsTools .fileMsg:empty { display: none; }
+#fileBar { display: none !important; }
+/* The page uses the room the bottom buttons had: the card area grows down to the bars under it */
+#homeRow #home { height: calc(100vh - 250px); height: calc(100dvh - 250px); min-height: 220px; }
+/* Smaller cards: three in a row on a phone */
+#homeRow #home { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; align-content: start; }
+.tile { width: auto; height: 112px; padding: 8px 6px; gap: 2px; border-radius: 18px; }
+.tile .name { font-size: 15px; margin-top: 16px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .num { font-size: 17px; }
+.tile .opened { font-size: 10px; line-height: 1.25; }
+.tile .rename, .tile .removeTile { width: 24px; height: 24px; font-size: 12px; border-radius: 8px; top: 5px; }
+.tile .rename { inset-inline-end: 5px; }
+.tile .removeTile { inset-inline-start: 5px; }
+body.compactBoxes .tile { width: auto; height: 68px; }
+body.compactBoxes .tile .name { margin-top: 8px; }
 .homeMicRow { margin-bottom: 0; }
 .homeMicMsg:empty { display: none; }
 /* עסק: the business spending lines have their amount, correct and delete buttons together */
@@ -615,6 +637,19 @@ html[dir=ltr] .jobBody .total { text-align: start; }
       <input type="checkbox" id="lightThemeSwitch" role="switch" onchange="setTheme(this.checked ? 'light' : 'dark')">
       <span class="switchTrack" aria-hidden="true"></span>
     </label>
+    <!-- Shown when Settings is opened from ניהול כספים -->
+    <div class="settingsTools" id="settingsTools">
+      <button class="fileBtn itemsOpenBtn" onclick="closeSettings(); openItems('business')" data-t="itemsBtn"></button>
+      <button class="fileBtn" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button>
+      <div id="bm" class="backupMenu" style="display:none">
+        <button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
+        <button class="fileBtn load" onclick="document.getElementById('fileInput').click()" data-t="loadFile"></button>
+        <button class="fileBtn" onclick="backupByEmail()" data-t="backupBtn"></button>
+        <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
+        <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="loadBackupFile(event)">
+      </div>
+      <div class="fileMsg" id="fileMsg"></div>
+    </div>
     <div class="dialogButtons"><button class="cancelBtn" onclick="closeSettings()" data-t="closeBtn"></button></div>
   </div>
 </div>
@@ -652,6 +687,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 <div id="homeRow">
   <div id="jobSide">
     <h2 class="sideTitle" style="display:none" data-t="jobTitle"></h2>
+    <button class="cardsGear" id="cardsGear" onclick="openSettings(true)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <div class="homeMicRow"><div class="homeMicLine"><button class="homeMic" id="homeMicBtn" onclick="addBox()" data-t="newCardBtn"></button></div><span class="homeMicMsg" id="homeMicMsg"></span></div>
     <div id="home"></div>
   </div>
@@ -682,13 +718,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
   <button class="fileBtn clearHistoryBtn" id="clearHistoryBtn" onclick="clearHistory()" data-t="clearHistory"></button>
 </div>
 </div>
-<div id="fileBar"><button class="fileBtn itemsOpenBtn" style="grid-column:1/3" onclick="openItems('business')" data-t="itemsBtn"></button><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
-  <button class="fileBtn load" onclick="document.getElementById('fileInput').click()" data-t="loadFile"></button>
-  <button class="fileBtn" onclick="backupByEmail()" data-t="backupBtn"></button>
-  <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
-  <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="loadBackupFile(event)">
-  </div><div class="fileMsg" id="fileMsg"></div>
-</div>
+<div id="fileBar"></div><!-- its buttons moved into Settings (the gear) -->
 
 <!-- Add from a category: every item of the chosen category, each with an empty price to type -->
 <div id="tplOverlay" onclick="closeTemplate()">
@@ -1426,6 +1456,8 @@ function applyLang() {
   document.getElementById('toFront').setAttribute('aria-label', t.back);
   document.getElementById('settingsBtn').title = t.settingsBtn;
   document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
+  document.getElementById('cardsGear').title = t.settingsBtn;
+  document.getElementById('cardsGear').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   applyTheme();
   const startMsgEl = document.getElementById('startMsg');
@@ -1477,7 +1509,9 @@ function setTheme(theme) {
   LS.setItem('money_theme', theme === 'light' ? 'light' : 'dark');
   applyTheme();
 }
-function openSettings() {
+// withTools: opened from ניהול כספים, so "פריטים וקטגוריות" and "גיבוי" are shown too.
+function openSettings(withTools) {
+  document.getElementById('settingsTools').style.display = withTools === true ? '' : 'none';
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   document.getElementById('lightThemeSwitch').checked = currentTheme() === 'light';
   document.getElementById('settingsOverlay').classList.add('show');
@@ -2779,9 +2813,11 @@ document.getElementById('nameInput').addEventListener('keydown', e => {
 
 function addBox() {
   openNameDialog('', name => {
-    boxes.push({ id: 'b' + Date.now(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
+    const id = 'b' + Date.now();
+    boxes.push({ id: id, name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
     saveBoxes();
     renderHome();
+    openApp(id); // the new card opens straight away
   });
 }
 function renameBox(event, id) {
@@ -3367,7 +3403,7 @@ function closeApp() {
   document.getElementById('homeRow').style.display = 'flex';
   document.getElementById('fileBar').style.display = 'grid';
   document.getElementById('middleArea').style.display = 'flex';
-  document.getElementById('home').style.display = 'flex';
+  document.getElementById('home').style.display = ''; // the stylesheet lays the cards out (a grid)
   renderPersonal();
   renderSummaries();
   renderHome();

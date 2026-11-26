@@ -568,6 +568,12 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .editWhich { font-family: var(--num); font-size: 13px; color: var(--soft); background: var(--bg); border-radius: 12px; padding: 8px 10px; text-align: center; overflow-wrap: anywhere; }
 .editWhich:empty { display: none; }
 .tapEdit { cursor: pointer; }
+/* The "כסף שנכנס" total opens and closes the income list under it */
+#listIncome.collapsed { display: none; }
+#incomeToggle { cursor: pointer; }
+#incomeToggle:hover { background: var(--surface2); }
+#incomeToggle h3::after { content: ' \25BE'; }
+#incomeToggle.open h3::after { content: ' \25B4'; }
 /* Editing inside the tapped row: the row's own content steps aside for its amount and text */
 .inlineEditing { outline: 2px solid var(--violet); outline-offset: -2px; background: var(--violetBg) !important; }
 .inlineEditing > :not(.inlineForm) { display: none !important; }
@@ -843,13 +849,13 @@ html[dir=rtl] #editAmount { text-align: end; }
       <h2 class="income" data-t="incomeTitle"></h2>
       <!-- Money in: its card, then the list -->
       <div class="cards">
-        <div class="card moneyInCard">
+        <div class="card moneyInCard" id="incomeToggle" role="button" tabindex="0" aria-expanded="false" onclick="if (!event.target.closest('.addIncome')) toggleIncomeList()" onkeydown="if ((event.key === 'Enter' || event.key === ' ') && event.target === this) { event.preventDefault(); toggleIncomeList(); }">
           <button class="addIncome" onclick="addIncome()" data-t-title="addPlaceholder">+</button>
           <h3 data-t="moneyIn"></h3>
           <div class="total income" id="tIncome">0.00</div>
         </div>
       </div>
-      <ul id="listIncome" class="entryList"></ul>
+      <ul id="listIncome" class="entryList collapsed"></ul><!-- closed until the total above is tapped -->
       <!-- Job spending: closed, only its title. A click opens its total and list; another click closes it. -->
       <div class="jobSection closed" id="jobSection">
         <button class="jobToggle" id="jobToggle" type="button" onclick="toggleJobSection()" aria-expanded="false"><span class="jobToggleTitle" data-t="jobSpending"></span><span class="jobToggleSum" id="tJob">0.00</span></button>
@@ -3597,6 +3603,15 @@ function applyPanels() {
   document.body.classList.toggle('businessOpen', openPanel === 'business'); // "עסק" open: the small customer cards are hidden
 }
 
+// Inside a card the income list is closed: tapping the "כסף שנכנס" total opens it, tapping again closes it.
+function toggleIncomeList(open) {
+  const list = document.getElementById('listIncome');
+  const willOpen = open === undefined ? list.classList.contains('collapsed') : open;
+  list.classList.toggle('collapsed', !willOpen);
+  const card = document.getElementById('incomeToggle');
+  card.classList.toggle('open', willOpen);
+  card.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
 function toggleJobSection(open) {
   const sec = document.getElementById('jobSection');
   const willOpen = open === undefined ? sec.classList.contains('closed') : open;
@@ -3634,6 +3649,7 @@ function resetPageState() {
   // Inside a card: the typed number, the last message, and "הוצאות עבודה" closed again
   document.getElementById('typed').value = '';
   toggleJobSection(false);
+  toggleIncomeList(false);
   heard.textContent = '';
   if (booted) { renderSummaries(); renderPersonalPage(); }
   window.scrollTo(0, 0);

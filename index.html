@@ -586,6 +586,10 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .editDialog { width: min(380px, 94vw); display: flex; flex-direction: column; gap: 10px; }
 .editKind { margin: 0; }
 .editField { display: flex; flex-direction: column; gap: 4px; text-align: start; font-size: 13px; color: var(--muted); }
+.editField input[type=date] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: start; line-height: 44px; }
+.editField input[type=date]::-webkit-date-and-time-value { text-align: start; }
+.editField { min-width: 0; }
+.inlineSpacer { flex: 1 1 auto; }
 .editField input, .editField select { height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-family: inherit; font-size: 16px; width: 100%; }
 #editAmount { font-family: var(--num); direction: ltr; text-align: start; }
 html[dir=rtl] #editAmount { text-align: end; }
@@ -777,14 +781,9 @@ html[dir=rtl] #editAmount { text-align: end; }
   <div class="nameDialog editDialog" onclick="event.stopPropagation()">
     <h3 data-t="editEntryTitle"></h3>
     <div class="editWhich" id="editWhich"></div>
-    <div class="viewTabs editKind" id="editKindRow">
-      <button type="button" class="viewTab" id="editKindIn" onclick="setEditKind('income')" data-t="kindIn"></button>
-      <button type="button" class="viewTab" id="editKindOut" onclick="setEditKind('job')" data-t="kindOut"></button>
-    </div>
     <label class="editField"><span data-t="colAmount"></span><input type="text" id="editAmount" inputmode="decimal" autocomplete="off"></label>
-    <label class="editField"><span data-t="editText"></span><input type="text" id="editNote" maxlength="80" autocomplete="off"></label>
     <label class="editField"><span data-t="editDate"></span><input type="date" id="editDate"></label>
-    <label class="editField" id="editItemRow"><span data-t="colItem"></span><select id="editItem" onchange="showEditCat()"></select></label>
+    <label class="editField" id="editItemRow"><span data-t="colItem"></span><input type="text" id="editItem" list="itemSuggest" maxlength="40" autocomplete="off" oninput="showEditCat()"></label>
     <label class="editField" id="editCatRow"><span data-t="category"></span><select id="editCat"></select></label>
     <div class="nameMicMsg" id="editMsg"></div>
     <div class="dialogButtons">
@@ -793,6 +792,8 @@ html[dir=rtl] #editAmount { text-align: end; }
     </div>
   </div>
 </div>
+<!-- The items of the open section, offered while an item is typed -->
+<datalist id="itemSuggest"></datalist>
 
 <!-- Items and categories: what was bought -->
 <div id="itemsOverlay" onclick="closeItems()">
@@ -1269,6 +1270,7 @@ const TEXT = {
     editDate: 'תאריך',
     saveBtn: 'שמירה',
     amountBad: 'הקלידו סכום תקין.',
+    addItemAsk: '"{x}" לא נמצא ברשימת הפריטים. להוסיף אותו לרשימה?',
     pickSection: (heardText, amountText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - הוצאה\nזה נמצא גם באישי וגם בעסק. לאן להוסיף?',
     pickSayHint: 'אפשר גם לומר את התשובה, למשל "אישי" או "עסק".',
     pickNotUnderstood: 'לא הבנתי. אמרו שוב או לחצו על כפתור.',
@@ -1442,6 +1444,7 @@ const TEXT = {
     editDate: 'Date',
     saveBtn: 'Save',
     amountBad: 'Type a valid amount.',
+    addItemAsk: '"{x}" is not in the items list. Add it to the list?',
     pickSection: (heardText, amountText) => 'I heard: "' + heardText + '"\n' + amountText + ' - spending\nThis is in both Personal and Business. Where should it go?',
     pickSayHint: 'You can also say the answer, for example "personal" or "business".',
     pickNotUnderstood: 'I did not understand. Say it again or tap a button.',
@@ -1976,27 +1979,40 @@ function addTemplateEntries() {
   document.getElementById('perMsg').textContent = t.tplAdded.replace('{n}', chosen.length).replace('{sum}', sum.toFixed(2));
 }
 
-// ---- Editing an entry: everything on it can be changed ----
-// e: the entry; scope: whose items list to offer ('business' or 'personal'); canKind: income/spending can be switched;
-// onSave: saves and redraws. A text typed here is kept as it is (e.custom), also for income.
+// ---- Editing an entry ----
+// An expense stays an expense and an income stays an income: the edit changes only that row.
+// Spending rows: amount, date, item (typed or picked; a new one can be added to the items list) and category.
+// Income rows: amount and date.
 let editing = null;
 function entryDay(e) { const d = entryDate(e); return d ? dayKey(d) : dayKey(new Date()); }
-function editText(e) {
-  if (e.custom) return e.note || '';
-  if (e.kind === 'income') return '';
-  return e.item ? '' : (e.note || '');
+function itemInList(scope, name) { const n = normKey(name); return getItems(scope).find(x => normKey(x.name) === n) || null; }
+// The suggestions under an item field: the items of that section.
+function fillItemSuggest(scope) {
+  const dl = document.getElementById('itemSuggest');
+  dl.innerHTML = '';
+  getItems(scope).map(x => x.name).sort((a, b) => a.localeCompare(b)).forEach(n => { const o = document.createElement('option'); o.value = n; dl.appendChild(o); });
 }
-function setEditKind(kind) {
-  if (!editing) return;
-  editing.kind = kind;
-  document.getElementById('editKindIn').classList.toggle('active', kind === 'income');
-  document.getElementById('editKindOut').classList.toggle('active', kind !== 'income');
-  document.getElementById('editItemRow').style.display = kind === 'income' ? 'none' : '';
-  showEditCat();
+// A typed item: the name from the list when it is there; otherwise ask whether to add it to the list.
+// Returns the item name to keep on the entry ('' for none).
+async function resolveTypedItem(scope, typed, cat) {
+  const name = String(typed || '').trim().replace(/[.!?,]+$/, '');
+  if (!name) return '';
+  const have = itemInList(scope, name);
+  if (have) return have.name;
+  if (await askConfirm(T().addItemAsk.replace('{x}', name))) {
+    const list = getItems(scope);
+    list.push({ name: name, cat: cat || '' });
+    saveItems(list, scope);
+    if (cat && getCats(scope).indexOf(cat) < 0) saveCats(getCats(scope).concat([cat]), scope);
+    // (no redraw here: the row being edited must stay until it is saved; saving redraws)
+  }
+  return name; // kept on this row either way
 }
-// The category can be chosen when there is no item (an item brings its own category).
+// The category is chosen for a row with no item, or for a new item that is not in the list yet.
 function showEditCat() {
-  const show = editing && editing.kind !== 'income' && !document.getElementById('editItem').value;
+  if (!editing) return;
+  const typed = document.getElementById('editItem').value.trim();
+  const show = editing.e.kind !== 'income' && (!typed || !itemInList(editing.scope, typed));
   document.getElementById('editCatRow').style.display = show ? '' : 'none';
 }
 function fillEditCats(scope, current) {
@@ -2009,47 +2025,33 @@ function fillEditCats(scope, current) {
   cats.forEach(c => opt(c, c));
   sel.value = current || '';
 }
-function fillEditItems(scope, current) {
-  const t = T();
-  const sel = document.getElementById('editItem');
-  sel.innerHTML = '';
-  const opt = (parent, v, text) => { const o = document.createElement('option'); o.value = v; o.textContent = text; parent.appendChild(o); };
-  opt(sel, '', t.noItem);
-  const items = getItems(scope);
-  if (current && !items.some(x => x.name === current)) opt(sel, current, current);
-  const groups = {};
-  items.forEach(it => { (groups[it.cat || ''] = groups[it.cat || ''] || []).push(it.name); });
-  Object.keys(groups).sort((a, b) => (a === '') - (b === '') || a.localeCompare(b)).forEach(c => {
-    const g = document.createElement('optgroup');
-    g.label = c || t.noCat;
-    groups[c].sort((a, b) => a.localeCompare(b)).forEach(n => opt(g, n, n));
-    sel.appendChild(g);
-  });
-  sel.value = current || '';
-}
-// rowEl: the row that was tapped; it stays marked while its edit window is open.
-function openEntryEditor(e, scope, canKind, onSave, rowEl) {
-  closeEntryEditor();
-  editing = { e: e, scope: scope, onSave: onSave, kind: e.kind === 'income' ? 'income' : 'job', canKind: canKind, row: rowEl || null };
-  if (rowEl) rowEl.classList.add('editingRow');
-  // The row's own details on top, so it is clear which one is being edited.
-  const text = shownNote(e) || (e.cat || '');
+function showEditWhich(e) {
   const which = document.getElementById('editWhich');
   which.innerHTML = '';
+  const text = shownNote(e) || (e.cat || '');
   [e.date || '', text].filter(Boolean).forEach(x => { which.appendChild(document.createTextNode(x)); which.appendChild(document.createTextNode('  ·  ')); });
   const amt = document.createElement('bdi');
   amt.dir = 'ltr';
   amt.className = e.kind === 'income' ? 'income' : 'personal';
   amt.textContent = (e.kind === 'income' ? '+' : '-') + e.amount.toFixed(2);
   which.appendChild(amt);
-  document.getElementById('editKindRow').style.display = canKind ? '' : 'none';
+}
+// rowEl: the row that was tapped; it stays marked while its edit window is open.
+function openEntryEditor(e, scope, canKind, onSave, rowEl) {
+  closeEntryEditor();
+  closeInlineEdits();
+  editing = { e: e, scope: scope, onSave: onSave, row: rowEl || null };
+  if (rowEl) rowEl.classList.add('editingRow');
+  showEditWhich(e);
+  const spend = e.kind !== 'income';
   document.getElementById('editAmount').value = e.amount;
-  document.getElementById('editNote').value = editText(e);
   document.getElementById('editDate').value = entryDay(e);
-  fillEditItems(scope, e.item || '');
+  document.getElementById('editItemRow').style.display = spend ? '' : 'none';
+  document.getElementById('editItem').value = spend ? (e.item || '') : '';
+  fillItemSuggest(scope);
   fillEditCats(scope, e.cat || '');
   document.getElementById('editMsg').textContent = '';
-  setEditKind(editing.kind);
+  showEditCat();
   document.getElementById('editOverlay').classList.add('show');
   document.getElementById('editAmount').focus();
 }
@@ -2058,31 +2060,67 @@ function closeEntryEditor() {
   document.querySelectorAll('.editingRow').forEach(r => r.classList.remove('editingRow'));
   editing = null;
 }
-// Tapping a row (not its buttons) edits that row right where it is: only its own amount and text.
-// An expense row changes only that expense, an income row only that income. onSave saves and redraws.
-function editOnTap(rowEl, e, onSave) {
+// Sets a row's item (or, with no item, its category). The shown text follows the item.
+function setEntryItem(e, item, cat) {
+  const before = e.item || '';
+  if (item) { e.item = item; delete e.cat; }
+  else { delete e.item; if (cat) e.cat = cat; else delete e.cat; }
+  if ((e.item || '') !== before) delete e.custom;
+}
+async function saveEntryEditor() {
+  if (!editing) return;
+  const ed = editing;
+  const e = ed.e;
+  const amount = findAmount(document.getElementById('editAmount').value);
+  if (amount === null || amount < 0) { document.getElementById('editMsg').textContent = T().amountBad; return; }
+  const day = document.getElementById('editDate').value;
+  const cat = document.getElementById('editCat').value;
+  const item = e.kind !== 'income' ? await resolveTypedItem(ed.scope, document.getElementById('editItem').value, cat) : '';
+  if (editing !== ed) return; // closed while asking
+  e.amount = amount;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const parts = day.split('-').map(x => parseInt(x, 10));
+    e.day = day;
+    e.date = new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString();
+  }
+  if (e.kind !== 'income') setEntryItem(e, item, item && itemInList(ed.scope, item) ? '' : cat);
+  closeEntryEditor();
+  ed.onSave();
+}
+document.getElementById('editAmount').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); saveEntryEditor(); } });
+document.getElementById('editItem').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); saveEntryEditor(); } });
+
+// Tapping a row (not its buttons) edits that row right where it is.
+// An expense row: its item and amount. An income row: its amount. Nothing else changes.
+function editOnTap(rowEl, e, onSave, scope) {
   rowEl.classList.add('tapEdit');
   rowEl.addEventListener('click', ev => {
     if (ev.target.closest('button, input, select, a, .inlineForm')) return;
-    inlineEdit(rowEl, e, onSave);
+    inlineEdit(rowEl, e, onSave, scope);
   });
 }
 function closeInlineEdits() {
   document.querySelectorAll('.inlineEditing').forEach(r => { r.classList.remove('inlineEditing'); const f = r.querySelector('.inlineForm'); if (f) f.remove(); });
 }
-function inlineEdit(rowEl, e, onSave) {
+function inlineEdit(rowEl, e, onSave, scope) {
   const t = T();
   closeInlineEdits();
+  scope = scope || 'business';
   const isIn = e.kind === 'income';
   const form = document.createElement('div');
   form.className = 'inlineForm';
-  const note = document.createElement('input');
-  note.type = 'text';
-  note.className = 'inlineNote';
-  note.maxLength = 80;
-  note.placeholder = t.editText;
-  note.value = shownNote(e) || (e.cat || '');
-  const before = note.value;
+  let itemInput = null;
+  if (!isIn) {
+    fillItemSuggest(scope);
+    itemInput = document.createElement('input');
+    itemInput.type = 'text';
+    itemInput.className = 'inlineNote';
+    itemInput.maxLength = 40;
+    itemInput.placeholder = t.colItem;
+    itemInput.setAttribute('list', 'itemSuggest');
+    itemInput.setAttribute('aria-label', t.colItem);
+    itemInput.value = e.item || '';
+  }
   const sign = document.createElement('span');
   sign.className = 'inlineSign ' + (isIn ? 'income' : 'personal');
   sign.textContent = isIn ? '+' : '-';
@@ -2102,55 +2140,37 @@ function inlineEdit(rowEl, e, onSave) {
   cancel.title = t.cancelBtn;
   cancel.setAttribute('aria-label', t.cancelBtn);
   cancel.textContent = '✕';
-  const save = () => {
+  let saving = false;
+  const save = async () => {
+    if (saving) return;
     const v = findAmount(amount.value);
     if (v === null || v < 0) { amount.classList.add('bad'); amount.focus(); return; }
+    saving = true;
+    let item = '';
+    if (itemInput) item = await resolveTypedItem(scope, itemInput.value, '');
+    if (!rowEl.contains(form)) return; // closed while asking
     e.amount = v; // only this row's own amount; it stays income or spending as it was
-    if (note.value.trim() !== before) { e.note = note.value.trim(); e.custom = true; }
+    if (itemInput) setEntryItem(e, item, item ? '' : (e.cat || ''));
     closeInlineEdits();
     onSave();
   };
   ok.onclick = ev => { ev.stopPropagation(); save(); };
   cancel.onclick = ev => { ev.stopPropagation(); closeInlineEdits(); };
-  [note, amount].forEach(inp => inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') save(); if (ev.key === 'Escape') closeInlineEdits(); }));
+  [itemInput, amount].filter(Boolean).forEach(inp => inp.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { ev.preventDefault(); save(); } // (so Enter does not also answer the question that may open)
+    if (ev.key === 'Escape') closeInlineEdits();
+  }));
   const amountWrap = document.createElement('span');
   amountWrap.className = 'inlineAmountWrap';
   amountWrap.append(sign, amount);
-  form.append(note, amountWrap, ok, cancel);
+  if (itemInput) form.appendChild(itemInput);
+  else { const sp = document.createElement('span'); sp.className = 'inlineSpacer'; form.appendChild(sp); }
+  form.append(amountWrap, ok, cancel);
   rowEl.classList.add('inlineEditing');
   rowEl.appendChild(form);
   amount.focus();
   amount.select();
 }
-function saveEntryEditor() {
-  if (!editing) return;
-  const e = editing.e;
-  const amount = findAmount(document.getElementById('editAmount').value);
-  if (amount === null || amount < 0) { document.getElementById('editMsg').textContent = T().amountBad; return; }
-  e.amount = amount;
-  e.note = document.getElementById('editNote').value.trim();
-  e.custom = true;
-  const day = document.getElementById('editDate').value;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
-    const parts = day.split('-').map(x => parseInt(x, 10));
-    e.day = day;
-    e.date = new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString();
-  }
-  if (editing.canKind) e.kind = editing.kind;
-  const item = document.getElementById('editItem').value;
-  if (editing.kind === 'income' && editing.canKind) { delete e.item; delete e.cat; }
-  else if (item) { e.item = item; delete e.cat; }
-  else {
-    delete e.item;
-    const cat = document.getElementById('editCat').value;
-    if (cat) e.cat = cat; else delete e.cat;
-  }
-  const done = editing.onSave;
-  closeEntryEditor();
-  done();
-}
-document.getElementById('editAmount').addEventListener('keydown', ev => { if (ev.key === 'Enter') saveEntryEditor(); });
-document.getElementById('editNote').addEventListener('keydown', ev => { if (ev.key === 'Enter') saveEntryEditor(); });
 
 // The items window: add an item (type it or say it), set its category, rename it or remove it.
 // scope: 'business' (ניהול כספים) or 'personal' (אישי). Each section has its own items and categories.
@@ -2466,7 +2486,7 @@ function renderPersonalPage() {
       edit.textContent = '✎';
       const saveP = () => { savePersonal(); renderPersonalPage(); };
       edit.onclick = () => openEntryEditor(p, 'personal', false, saveP, line);
-      editOnTap(line, p, saveP);
+      editOnTap(line, p, saveP, 'personal');
       const del = document.createElement('button');
       del.className = 'del';
       del.textContent = '✕';

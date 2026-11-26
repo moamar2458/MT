@@ -401,6 +401,9 @@ html[dir=ltr] .card .total, html[dir=ltr] .card .amount { text-align: start; }
 .tenBar { background: var(--goldBg); border: 1px solid var(--goldLine); }
 .tenBar h3 { color: var(--goldText); }
 .tenBar .amount { color: var(--gold); }
+.tenBar.tenWide { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; margin-bottom: 4px; }
+.tenBar.tenWide h3 { margin: 0; font-size: 13px; line-height: 1.5; text-align: start; min-width: 0; }
+.tenBar.tenWide .amount { font-size: 24px; white-space: nowrap; flex-shrink: 0; }
 .tenBar input { background: var(--bg); color: var(--gold); border: 1px solid var(--goldInputLine) !important; border-radius: 8px; font-family: var(--num); }
 .jobCard { background: var(--redBg); border: 1px solid var(--redLine); }
 .jobCard h3 { color: var(--redText); }
@@ -786,16 +789,12 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 
     <div class="col in">
       <h2 class="income" data-t="incomeTitle"></h2>
-      <!-- Money in: two equal cards, the add field, then the list -->
+      <!-- Money in: its card, then the list -->
       <div class="cards">
         <div class="card moneyInCard">
           <button class="addIncome" onclick="addIncome()" data-t-title="addPlaceholder">+</button>
           <h3 data-t="moneyIn"></h3>
           <div class="total income" id="tIncome">0.00</div>
-        </div>
-        <div class="card tenBar">
-          <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
-          <div class="amount" id="tTen">0.00</div>
         </div>
       </div>
       <ul id="listIncome" class="entryList"></ul>
@@ -806,6 +805,11 @@ html[dir=ltr] .jobBody .total { text-align: start; }
           <div class="listTitle" data-t="jobList"></div>
           <ul id="listJob" class="entryList"></ul>
         </div>
+      </div>
+      <!-- The percentage: a long box across the full width, right under "הוצאות עבודה" -->
+      <div class="card tenBar tenWide">
+        <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
+        <div class="amount" id="tTen">0.00</div>
       </div>
     </div>
 

@@ -458,6 +458,24 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 .itemName:hover { border-color: var(--gold); }
 .itemsOpenBtn { color: #FDE68A; border-color: var(--goldLine); }
 #personalPage .itemsOpenBtn { display: block; margin: 14px auto 20px; }
+
+/* Settings: the gear at the top right of the first page, and its window */
+.settingsBtn { position: fixed; top: 8px; right: 8px; z-index: 10; width: 44px; height: 44px; padding: 0; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 22px; display: none; align-items: center; justify-content: center; cursor: pointer; }
+.settingsBtn.show { display: flex; }
+.settingsBtn:hover { background: var(--surface2); }
+#settingsOverlay { display: none; position: fixed; inset: 0; background: rgba(5,6,10,0.72); backdrop-filter: blur(4px); z-index: 55; align-items: center; justify-content: center; }
+#settingsOverlay.show { display: flex; }
+.settingsDialog { width: min(360px, 92vw); }
+.switchRow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; cursor: pointer; text-align: start; }
+.switchRow .switchText { display: flex; flex-direction: column; gap: 3px; }
+.switchRow .switchLabel { font-size: 16px; font-weight: 500; color: var(--text); }
+.switchRow .switchNote { font-size: 13px; color: var(--muted); }
+.switchRow input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switchTrack { flex-shrink: 0; width: 50px; height: 30px; border-radius: 15px; background: var(--line); position: relative; transition: background-color .15s ease; }
+.switchTrack::after { content: ''; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 12px; background: #fff; transition: transform .15s ease; }
+.switchRow input:checked + .switchTrack { background: var(--green); }
+.switchRow input:checked + .switchTrack::after { transform: translateX(20px); }
+.switchRow input:focus-visible + .switchTrack { outline: 2px solid var(--violetText); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -482,6 +500,19 @@ button.edit:hover { background: #2E3344; color: var(--text); }
   </div>
 </div>
 <button class="langBtn" id="langBtn" onclick="toggleLang()">English</button>
+<button class="settingsBtn" id="settingsBtn" onclick="openSettings()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+<!-- Settings window -->
+<div id="settingsOverlay" onclick="closeSettings()">
+  <div class="nameDialog settingsDialog" onclick="event.stopPropagation()">
+    <h3 data-t="settingsTitle"></h3>
+    <label class="switchRow">
+      <span class="switchText"><span class="switchLabel" data-t="hideHints"></span><span class="switchNote" data-t="hideHintsNote"></span></span>
+      <input type="checkbox" id="hideHintsSwitch" role="switch" onchange="setHintsHidden(this.checked)">
+      <span class="switchTrack" aria-hidden="true"></span>
+    </label>
+    <div class="dialogButtons"><button class="cancelBtn" onclick="closeSettings()" data-t="closeBtn"></button></div>
+  </div>
+</div>
 
 <div id="startPage">
   <div class="startRow">
@@ -629,7 +660,7 @@ button.edit:hover { background: #2E3344; color: var(--text); }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -999,6 +1030,10 @@ const TEXT = {
     closeBtn: 'סגירה',
     sayItemHint: 'הקלידו או אמרו פריט. אפשר לומר גם קטגוריה, למשל "סיליקון חומרים".',
     tryAgain: 'נסו שוב',
+    settingsBtn: 'הגדרות',
+    settingsTitle: 'הגדרות',
+    hideHints: 'הסתרת טקסט ההסברים',
+    hideHintsNote: 'מסתיר את ההוראות שמסבירות מה לומר בכל המסכים',
     kinds: { income: 'הכנסה', job: 'הוצאות עבודה', personal: 'הוצאה אישית' },
     micLang: 'he-IL',
     button: 'EN',
@@ -1134,6 +1169,10 @@ const TEXT = {
     closeBtn: 'Close',
     sayItemHint: 'Type or say an item. You can also say its category, for example "silicone materials".',
     tryAgain: 'Try again',
+    settingsBtn: 'Settings',
+    settingsTitle: 'Settings',
+    hideHints: 'Hide instruction text',
+    hideHintsNote: 'Hides the help text that tells you what to say, on every screen',
     kinds: { income: 'Money in', job: 'Job spending', personal: 'Personal spending' },
     micLang: 'en-GB',
     button: '\u05E2\u05D1',
@@ -1191,6 +1230,11 @@ function applyLang() {
   document.getElementById('titleEdit').title = t.rename;
   document.getElementById('toFront').title = t.back;
   document.getElementById('toFront').setAttribute('aria-label', t.back);
+  document.getElementById('settingsBtn').title = t.settingsBtn;
+  document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
+  document.getElementById('hideHintsSwitch').checked = hintsHidden();
+  const startMsgEl = document.getElementById('startMsg');
+  if (isHintText(startMsgEl.textContent)) startMsgEl.textContent = hint('startHint');
   heard.textContent = '';
   renderHome();
   renderPersonal();
@@ -1202,6 +1246,40 @@ function toggleLang() {
   LS.setItem('money_lang', lang);
   applyLang();
 }
+
+// ---- Settings: hide the instruction texts (the ones that tell you what to say) ----
+// Saved as money_hide_hints ('1' = hidden), with the other settings, so it stays after a reload.
+const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty'];
+function hintsHidden() { return LS.getItem('money_hide_hints') === '1'; }
+// An instruction text, or nothing when instructions are hidden.
+function hint(key) { return hintsHidden() ? '' : T()[key]; }
+function isHintText(text) { return HINT_KEYS.some(k => text === TEXT.he[k] || text === TEXT.en[k]); }
+function setHintsHidden(hidden) {
+  LS.setItem('money_hide_hints', hidden ? '1' : '0');
+  applyHints();
+}
+// Puts the instruction texts on the screen, or takes them away, right now.
+function applyHints() {
+  document.getElementById('hideHintsSwitch').checked = hintsHidden();
+  const startMsg = document.getElementById('startMsg');
+  if (startMsg.textContent === '' || isHintText(startMsg.textContent)) startMsg.textContent = hint('startHint');
+  const itemMsg = document.getElementById('itemMsg');
+  if (itemMsg.textContent === '' || isHintText(itemMsg.textContent)) itemMsg.textContent = hint('sayItemHint');
+  renderPersonalPage();
+}
+function openSettings() {
+  document.getElementById('hideHintsSwitch').checked = hintsHidden();
+  document.getElementById('settingsOverlay').classList.add('show');
+  document.getElementById('hideHintsSwitch').focus();
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('show'); }
+// The gear shows only on the first page (the back button uses that corner on the other pages).
+function showStartPage(on) {
+  document.getElementById('startPage').style.display = on ? 'flex' : 'none';
+  document.getElementById('settingsBtn').classList.toggle('show', !!on);
+  if (!on) closeSettings();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('settingsOverlay').classList.contains('show')) closeSettings(); });
 
 // ---- Weekly and monthly summaries (weeks start on Sunday, months are calendar months) ----
 let jobView = 'week';
@@ -1346,7 +1424,7 @@ function openItems() {
   const sel = document.getElementById('itemCatSel');
   fillCatSelect(sel, sel.value && sel.value !== '__new__' ? sel.value : (getCats()[0] || ''));
   sel.dataset.prev = sel.value;
-  document.getElementById('itemMsg').textContent = T().sayItemHint;
+  document.getElementById('itemMsg').textContent = hint('sayItemHint');
   drawItems();
   document.getElementById('itemsOverlay').classList.add('show');
   document.getElementById('itemInput').focus();
@@ -1525,7 +1603,8 @@ function renderCategoryBreakdown(box, entries, foldPrefix, redraw, emptyText) {
   box.appendChild(total);
 }
 function openPersonalPage() {
-  document.getElementById('startPage').style.display = 'none';
+  resetPageState(); // leaving the first page
+  showStartPage(false);
   document.getElementById('personalPage').style.display = 'block';
   document.getElementById('toFront').style.display = 'block';
   renderPersonalPage();
@@ -1558,7 +1637,7 @@ function renderPersonalPage() {
   });
   const box = document.getElementById('personalList');
   box.innerHTML = '';
-  if (personal.length === 0) { box.appendChild(cell(t.personalEmpty, 'savedTitle')); return; }
+  if (personal.length === 0) { box.appendChild(cell(hintsHidden() ? t.noPersonal : t.personalEmpty, 'savedTitle')); return; }
   // By category: how much personal spending went on each category (חשמל, אוכל...).
   if (personalView === 'category') {
     renderCategoryBreakdown(box, personal.filter(p => p.kind !== 'income'), 'personal', renderPersonalPage, t.noPersonal);
@@ -2148,7 +2227,7 @@ const NUMBER_WORDS = {
   twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90,
   'אפס':0, 'אחד':1, 'אחת':1, 'שניים':2, 'שתיים':2, 'שתי':2, 'שני':2, 'שלוש':3, 'שלושה':3, 'ארבע':4, 'ארבעה':4,
   'חמש':5, 'חמישה':5, 'שש':6, 'שישה':6, 'שבע':7, 'שבעה':7, 'שמונה':8, 'תשע':9, 'תשעה':9, 'עשר':10, 'עשרה':10,
-  'עשרים':20, 'שלושים':30, 'ארבעים':40, 'חמישים':50, 'שישים':60, 'שבעים':70, 'שמונים':80, 'תשעים':90,
+  'מאתיים':200, 'עשרים':20, 'שלושים':30, 'ארבעים':40, 'חמישים':50, 'שישים':60, 'שבעים':70, 'שמונים':80, 'תשעים':90,
   // When the speech service writes Hebrew as Arabic, the numbers can come back as Arabic words.
   'واحد':1, 'اثنين':2, 'ثلاثة':3, 'ثلاث':3, 'اربعة':4, 'أربعة':4, 'اربع':4, 'خمسة':5, 'خمس':5, 'ستة':6, 'سبعة':7, 'ثمانية':8, 'تسعة':9, 'عشرة':10,
   'عشرين':20, 'ثلاثين':30, 'اربعين':40, 'أربعين':40, 'خمسين':50, 'ستين':60, 'سبعين':70, 'ثمانين':80, 'تسعين':90, 'مئتين':200, 'ميتين':200
@@ -2253,16 +2332,112 @@ function addEntry(kind, amount, note, item) {
   render();
 }
 
-// The microphone is only for job spending: any number you say goes there.
+// ---- Reading a spoken sentence in any order: the amount, the action and the name can be anywhere ----
+// "קיבלתי 200 שקל מיפית", "200 שקל קיבלתי מיפית" and "יפית 200 שקל קיבלתי" all mean the same thing.
+// Small Hebrew letters stuck to the front of a word (ו ש ה ל מ ב כ) are allowed: "וקיבלתי", "מיפית", "ליפית".
+const INCOME_ACTIONS = [
+  /^[ושה]?ק(י|יי)?בלתי$/, /^[ושה]?ק(י|יי)?בלנו$/, /^[ושה]?התקבל(ו|ה)?$/, /^[ושה]?נכנס(ו|ה)?$/,
+  /^(received|recieved|receive|got)$/,
+  /^(و)?[كق]ي?بل(ت|ط)[يى]$/   // "קיבלתי" written in Arabic letters by the speech service
+];
+const SPEND_ACTIONS = [
+  /^[ושה]?ש(י)?למתי$/, /^[ושה]?ש(י)?למנו$/, /^[ושה]?קניתי$/, /^[ושה]?קנינו$/, /^[ושה]?הוצאתי$/,
+  /^(paid|bought|spent|pay|buy|spend)$/
+];
+const SHEKEL_WORDS = /^[ובלמה]?(שקל|שקלים|שח|ש"ח|ש״ח|₪|nis|ils|shekel|shekels|sheqel)$/;
+// Little words that are never the name: "from", "to", "for"...
+const LINK_WORDS = ['מ', 'מן', 'מאת', 'ל', 'אל', 'את', 'אצל', 'עבור', 'בשביל', 'של', 'על', 'עם', 'היום', 'אתמול', 'כסף', 'from', 'to', 'for', 'by', 'with', 'i', 'today', 'money'];
+function cleanWord(w) { return String(w || '').toLowerCase().trim(); }
+function isAction(w, list) { const c = cleanWord(w); return list.some(re => re.test(c)); }
+function saysShekel(sentence) { return sentenceWords(sentence).some(w => SHEKEL_WORDS.test(cleanWord(w)) || /₪/.test(w)); }
+// What the sentence asks for: 'income', 'job', or '' when it does not say.
+// "קיבלתי" with an amount or the word "שקל" ALWAYS means money in, whichever mic was used.
+function sentenceAction(sentence) {
+  const words = sentenceWords(sentence);
+  const received = words.some(w => isAction(w, INCOME_ACTIONS));
+  if (received && (findAmount(sentence) !== null || saysShekel(sentence))) return 'income';
+  if (!received && words.some(w => isAction(w, SPEND_ACTIONS))) return 'job';
+  return '';
+}
+// The sentence without the action words, so they are not mistaken for an item or a name.
+function withoutActions(sentence) {
+  return sentenceWords(sentence).filter(w => !isAction(w, INCOME_ACTIONS) && !isAction(w, SPEND_ACTIONS)).join(' ');
+}
+function isNumberWord(w) {
+  const c = w.replace(/^[ו]/, '').replace(/^و/, '');
+  return (w in NUMBER_WORDS) || (c in NUMBER_WORDS) || HUNDRED_WORDS.indexOf(w) >= 0 || HUNDRED_WORDS.indexOf(c) >= 0 || THOUSAND_WORDS.indexOf(w) >= 0 || THOUSAND_WORDS.indexOf(c) >= 0;
+}
+// The words that are left for the name, in the order they were said.
+function nameWords(sentence, itemMatch) {
+  return sentenceWords(sentence)
+    .filter((w, i) => !itemMatch || itemMatch.used.indexOf(i) < 0)
+    .map(w => w.replace(/["'״׳`]/g, ''))
+    .filter(w => w && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w) && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0 && !saysPersonal(w));
+}
+// A word, plus the same word without the small letters stuck to its front ("מיפית" -> "יפית").
+function wordForms(w) {
+  const n = normWord(w);
+  const out = [n];
+  const m = n.match(/^[ומלבהשכ]{1,2}/);
+  if (m) {
+    if (n.length - 1 >= 2) out.push(n.slice(1));
+    if (m[0].length === 2 && n.length - 2 >= 2) out.push(n.slice(2));
+  }
+  return out;
+}
+// Finds the open card whose name was said, wherever it was in the sentence. Returns { b, i } or null.
+function findCard(sentence, itemMatch) {
+  const words = nameWords(sentence, itemMatch);
+  if (!words.length) return null;
+  const active = boxes.map((b, i) => ({ b: b, i: i })).filter(x => !x.b.finished);
+  // 1) The card's name (one word or more) appears as words in the sentence, with or without a stuck-on letter.
+  const scored = active.map(x => {
+    const parts = boxLabel(x.b, x.i).split(/\s+/).filter(Boolean).map(normWord);
+    const target = parts.join('');
+    const sk = soundKey(target);
+    let score = 0;
+    if (!target) return { x: x, score: 0 };
+    for (let s = 0; s + parts.length <= words.length; s++) {
+      const win = words.slice(s, s + parts.length);
+      const tail = win.slice(1).map(normWord).join('');
+      wordForms(win[0]).forEach((first, fi) => {
+        const said = first + tail;
+        if (said === target) score = Math.max(score, fi === 0 ? 4 : 3);
+        else if (sk.length >= 2 && soundKey(said) === sk) score = Math.max(score, 2);
+      });
+    }
+    return { x: x, score: score };
+  });
+  const best = Math.max(0, ...scored.map(s => s.score));
+  if (best > 0) {
+    const top = scored.filter(s => s.score === best);
+    if (top.length === 1) return top[0].x;
+    return null; // more than one card fits equally: ask
+  }
+  // 2) Fall back to the older, looser matching on the words that are left.
+  const rest = words.join(' ').toLowerCase();
+  const exact = active.filter(x => boxLabel(x.b, x.i).toLowerCase() === rest);
+  // Very short names or sounds only count when they match exactly, so they don't match every sentence.
+  const part = active.filter(x => { const n = boxLabel(x.b, x.i).toLowerCase(); return (rest.length >= 2 && n.includes(rest)) || (n.length >= 2 && rest.includes(n)); });
+  const rk = soundKey(rest);
+  const alike = rk ? active.filter(x => { const nk = soundKey(boxLabel(x.b, x.i)); return nk && (nk === rk || (rk.length >= 2 && nk.includes(rk)) || (nk.length >= 2 && rk.includes(nk))); }) : [];
+  if (exact.length === 1) return exact[0];
+  if (part.length === 1) return part[0];
+  if (part.length === 0 && alike.length === 1) return alike[0];
+  return null;
+}
+
+// The microphone inside a card: a number goes to job spending, unless the sentence says "קיבלתי" (money in).
 function handleText(sentence) {
   sentence = (sentence || '').trim();
   if (!sentence) return;
   const t = T();
   const amount = findAmount(sentence);
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
-  const item = findItem(sentence);
-  addEntry('job', amount, sentence, item ? item.name : '');
-  heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
+  const kind = sentenceAction(sentence) || 'job';
+  const item = kind === 'job' ? findItem(withoutActions(sentence)) : null;
+  addEntry(kind, amount, sentence, item ? item.name : '');
+  heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
 }
 
 // Adding money in from the Money coming in square.
@@ -2459,8 +2634,39 @@ function applyPanels() {
   document.body.classList.toggle('compactBoxes', openPanel !== null);
 }
 
+// Leaving a page: close everything that was opened on it (panels, folded lists, menus, windows, the mic),
+// so the page starts fresh the next time.
+function resetPageState() {
+  if (activeRec) activeRec.cancel();
+  if (dictation && dictation.active()) dictation.stop().catch(() => {});
+  document.querySelectorAll('.listening').forEach(el => el.classList.remove('listening'));
+  // Windows on top
+  if (document.getElementById('askOverlay').classList.contains('show')) document.getElementById('askCancel').click();
+  document.getElementById('pickOverlay').classList.remove('show');
+  if (document.getElementById('nameOverlay').classList.contains('show')) closeNameDialog(null);
+  document.getElementById('itemsOverlay').classList.remove('show');
+  document.getElementById('itemInput').value = '';
+  closeSettings();
+  // ניהול כספים: the summary and history panels, their folded lists, and the backup menu
+  openPanel = null;
+  applyPanels();
+  periodFolds.clear();
+  openSummaryRows.clear();
+  jobView = 'week';
+  personalView = 'week';
+  document.getElementById('bm').style.display = 'none';
+  document.getElementById('fileMsg').textContent = '';
+  document.getElementById('homeMicMsg').textContent = '';
+  // Inside a card: the typed number and the last message
+  document.getElementById('typed').value = '';
+  heard.textContent = '';
+  if (booted) { renderSummaries(); renderPersonalPage(); }
+  window.scrollTo(0, 0);
+}
+
 // Open one box from the home screen, and shrink it back with the button.
 function openApp(id) {
+  resetPageState(); // leaving the page with the small boxes
   currentId = id;
   document.getElementById('homeRow').style.display = 'none';
   document.getElementById('fileBar').style.display = 'none';
@@ -2549,8 +2755,12 @@ function handleHomeText(sentence, kind, msgEl) {
   sentence = (sentence || '').trim();
   const amount = findAmount(sentence);
   if (amount === null) { msg.textContent = T().heardWord + ' "' + sentence + '" ' + T().noAmount; return; }
+  // The words can come in any order. "קיבלתי" (with an amount or "שקל") always means money in,
+  // "שילמתי" / "קניתי" means spending; otherwise the mic that was pressed decides.
+  kind = sentenceAction(sentence) || kind;
+  const plain = withoutActions(sentence); // the action words are not part of the item or the name
   // Spending can also say what it was for ("דוד 50 שקל צבע"): find the closest item from the list.
-  const itemMatch = kind === 'income' ? null : findItem(sentence);
+  const itemMatch = kind === 'income' ? null : findItem(plain);
   const item = itemMatch ? itemMatch.name : '';
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
@@ -2558,21 +2768,8 @@ function handleHomeText(sentence, kind, msgEl) {
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');
     return;
   }
-  // Take the number, the item and words like "שקל" away and keep the rest as the name.
-  let rest = withoutItem(sentence, itemMatch).replace(/\d+(?:[.,]\d+)?/g, ' ').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ');
-  rest = rest.split(/\s+/).filter(w => w && !(w.replace(/^ו/, '') in NUMBER_WORDS) && !(w in NUMBER_WORDS) && w !== 'hundred' && w !== 'thousand' && w !== 'מאה' && w !== 'מאות' && w !== 'אלף' && w !== 'אלפים' && w !== 'to' && w !== 'for' && w !== 'את' && w !== 'ל' && FILLER_WORDS.indexOf(w) < 0).join(' ').trim();
-  const active = boxes.map((b, i) => ({ b: b, i: i })).filter(x => !x.b.finished);
-  let match = null;
-  if (rest) {
-    const exact = active.filter(x => boxLabel(x.b, x.i).toLowerCase() === rest);
-    // Very short names or sounds only count when they match exactly, so they don't match every sentence.
-    const part = active.filter(x => { const n = boxLabel(x.b, x.i).toLowerCase(); return (rest.length >= 2 && n.includes(rest)) || (n.length >= 2 && rest.includes(n)); });
-    const rk = soundKey(rest);
-    const alike = rk ? active.filter(x => { const nk = soundKey(boxLabel(x.b, x.i)); return nk && (nk === rk || (rk.length >= 2 && nk.includes(rk)) || (nk.length >= 2 && rk.includes(nk))); }) : [];
-    if (exact.length === 1) match = exact[0];
-    else if (part.length === 1) match = part[0];
-    else if (part.length === 0 && alike.length === 1) match = alike[0];
-  }
+  // Take the number, the item, the action and words like "שקל" away; the card's name is found in what is left.
+  const match = findCard(plain, itemMatch);
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.
   if (!match) { chooseTarget(sentence, amount, kind, msg, item); return; }
   const entry = { kind: kind, amount: amount, note: sentence, date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
@@ -2613,8 +2810,8 @@ async function boot() {
   closeApp(); // always start on the home screen with the small boxes
   // Start page: two microphone buttons first. A press on either opens the page with the boxes.
   ['homeRow', 'middleArea', 'fileBar'].forEach(id => { document.getElementById(id).style.display = 'none'; });
-  document.getElementById('startPage').style.display = 'flex';
-  document.getElementById('startMsg').textContent = T().startHint;
+  showStartPage(true);
+  document.getElementById('startMsg').textContent = hint('startHint');
 }
 boot();
 // Red mic = job spending, green mic = money in. Both: say an amount and the name of a box. They stay on this page.
@@ -2639,14 +2836,16 @@ document.getElementById('startPurple').onclick = () => {
 // The "אישי" bar opens the personal page.
 document.getElementById('personalBtn').onclick = openPersonalPage;
 // The button under the mics opens the page with the small boxes.
-document.getElementById('enterBtn').onclick = () => { document.getElementById('startPage').style.display = 'none'; closeApp(); document.getElementById('toFront').style.display = 'block'; };
+document.getElementById('enterBtn').onclick = () => { resetPageState(); showStartPage(false); closeApp(); document.getElementById('toFront').style.display = 'block'; };
 // The corner button goes back one page: from inside a box to the small boxes, from there to the first page.
+// Whatever was opened on the page being left is closed first.
 document.getElementById('toFront').onclick = () => {
+  resetPageState();
   if (currentId) { closeApp(); return; }
   ['homeRow', 'middleArea', 'fileBar', 'app', 'personalPage'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('toFront').style.display = 'none';
-  document.getElementById('startPage').style.display = 'flex';
-  document.getElementById('startMsg').textContent = T().startHint;
+  showStartPage(true);
+  document.getElementById('startMsg').textContent = hint('startHint');
 };
 </script>
 </body>

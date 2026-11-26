@@ -500,8 +500,9 @@ body.businessOpen #home, body.businessOpen .homeMicRow { display: none !importan
 /* Inside a card: "הוצאות עבודה" folds; closed it shows only its title */
 .jobSection { background: var(--redBg); border: 1px solid var(--redLine); border-radius: 16px; margin-bottom: 10px; }
 .jobToggle { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: none; border: none; padding: 12px 14px; color: var(--redText); font-family: var(--num); font-size: 15px; font-weight: 700; cursor: pointer; text-align: start; }
-.jobToggle::after { content: '\25B4'; }
-.jobSection.closed .jobToggle::after { content: '\25BE'; }
+.jobToggleTitle::after { content: ' \25B4'; }
+.jobSection.closed .jobToggleTitle::after { content: ' \25BE'; }
+.jobToggleSum { font-family: var(--num); font-size: 22px; font-weight: 700; direction: ltr; color: var(--redText); }
 .jobSection.closed .jobBody { display: none; }
 .jobBody { padding: 0 12px 12px; }
 .jobBody .total { font-family: var(--num); font-size: 24px; font-weight: 700; direction: ltr; text-align: end; margin-bottom: 4px; }
@@ -533,6 +534,14 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .perSectionTitle { font-size: 18px; font-weight: 700; text-align: start; margin: 6px 2px 10px; }
 .perTotal.perTotalOne { grid-template-columns: 1fr; }
 
+.catTools { display: flex; gap: 6px; flex-shrink: 0; }
+/* סיכום העבודה: follows the page's direction, so in Hebrew it reads name, הכנסה, הוצאות עבודה, נשאר from right to left */
+#summaryRow { direction: inherit; }
+#jobSummaryList .periodRow, #jobSummaryList .periodRow.byName { grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+#jobSummaryList .periodRow > div { min-width: 0; overflow-wrap: anywhere; }
+.pickMicRow { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
+.pickMicRow .nameMicMsg { flex: 1; min-width: 0; text-align: start; }
+#pickList button.pickBusiness { background: var(--orangeBg); border-color: var(--orangeLine); color: var(--orange); }
 /* אישי: "הוספה מקטגוריה" and "פריטים וקטגוריות" at the bottom, always shown */
 .perTools { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 16px auto 8px; }
 #personalPage .perTools .itemsOpenBtn { display: inline-block; margin: 0; }
@@ -575,6 +584,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 <div id="pickOverlay">
   <div class="nameDialog">
     <p id="pickText"></p>
+    <div class="pickMicRow"><button class="nameMic" id="pickMic" aria-label="mic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button><span class="nameMicMsg" id="pickMicMsg"></span></div>
     <div class="savedList" id="pickList"></div>
     <div class="dialogButtons"><button class="cancelBtn" id="pickCancel"></button></div>
   </div>
@@ -633,7 +643,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
   </div>
   <div class="perTools">
     <button class="fileBtn tplOpenBtn" id="perTplBtn" onclick="openTemplate()" data-t="templateBtn"></button>
-    <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems()" data-t="itemsBtn"></button>
+    <button class="fileBtn itemsOpenBtn" id="perItemsBtn" onclick="openItems('personal')" data-t="itemsBtn"></button>
   </div>
   <div class="homeMicMsg perMsg" id="perMsg"></div>
 </div>
@@ -672,7 +682,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
   <button class="fileBtn clearHistoryBtn" id="clearHistoryBtn" onclick="clearHistory()" data-t="clearHistory"></button>
 </div>
 </div>
-<div id="fileBar"><button class="fileBtn itemsOpenBtn" style="grid-column:1/3" onclick="openItems()" data-t="itemsBtn"></button><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
+<div id="fileBar"><button class="fileBtn itemsOpenBtn" style="grid-column:1/3" onclick="openItems('business')" data-t="itemsBtn"></button><button class="fileBtn" style="grid-column:1/3" onclick="with(bm.style)display=display?'':'none'" data-t="bk"></button><div id="bm" style="display:none;grid-column:1/3;grid-template-columns:repeat(2,max-content);gap:8px"><button class="fileBtn" onclick="saveBackupFile()" data-t="saveFile"></button>
   <button class="fileBtn load" onclick="document.getElementById('fileInput').click()" data-t="loadFile"></button>
   <button class="fileBtn" onclick="backupByEmail()" data-t="backupBtn"></button>
   <button class="fileBtn load" onclick="restoreBackup()" data-t="restoreBtn"></button>
@@ -703,9 +713,9 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 <!-- Items and categories: what was bought -->
 <div id="itemsOverlay" onclick="closeItems()">
   <div class="nameDialog itemsDialog" onclick="event.stopPropagation()">
-    <h3 data-t="itemsTitle"></h3>
+    <h3 id="itemsTitle"></h3>
     <div class="nameRow"><input type="text" id="itemInput" maxlength="40" data-p="itemName" onkeydown="if(event.key==='Enter')addItemFromInput()"><button class="nameMic" id="itemMic" aria-label="mic" onclick="sayItem()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button></div>
-    <div class="itemAddRow"><select id="itemCatSel" onchange="newItemCatChanged(this)"></select><button class="itemAddBtn" onclick="addItemFromInput()" data-t="addItem"></button></div>
+    <div class="itemAddRow"><select id="itemCatSel" onchange="newItemCatChanged(this)"></select><span id="catTools" class="catTools" style="display:none"><button class="edit" id="catRename" onclick="renameChosenCat()">&#9998;</button><button class="del" id="catRemove" onclick="removeChosenCat()">&#10005;</button></span><button class="itemAddBtn" onclick="addItemFromInput()" data-t="addItem"></button></div>
     <div class="nameMicMsg" id="itemMsg"></div>
     <div class="savedList itemsList" id="itemsList"></div>
     <div class="dialogButtons"><button class="cancelBtn" onclick="closeItems()" data-t="closeBtn"></button></div>
@@ -761,9 +771,8 @@ html[dir=ltr] .jobBody .total { text-align: start; }
       <ul id="listIncome" class="entryList"></ul>
       <!-- Job spending: closed, only its title. A click opens its total and list; another click closes it. -->
       <div class="jobSection closed" id="jobSection">
-        <button class="jobToggle" id="jobToggle" type="button" onclick="toggleJobSection()" aria-expanded="false"><span data-t="jobSpending"></span></button>
+        <button class="jobToggle" id="jobToggle" type="button" onclick="toggleJobSection()" aria-expanded="false"><span class="jobToggleTitle" data-t="jobSpending"></span><span class="jobToggleSum" id="tJob">0.00</span></button>
         <div class="jobBody">
-          <div class="total personal" id="tJob">0.00</div>
           <div class="listTitle" data-t="jobList"></div>
           <ul id="listJob" class="entryList"></ul>
         </div>
@@ -790,7 +799,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -1168,6 +1177,9 @@ const TEXT = {
     lightTheme: 'עיצוב בהיר',
     businessTitle: 'עסק',
     clearHistory: 'נקה היסטוריה',
+    pickSection: (heardText, amountText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - הוצאה\nזה נמצא גם באישי וגם בעסק. לאן להוסיף?',
+    pickSayHint: 'אפשר גם לומר את התשובה, למשל "אישי" או "עסק".',
+    pickNotUnderstood: 'לא הבנתי. אמרו שוב או לחצו על כפתור.',
     templateBtn: 'הוספה מקטגוריה',
     templateTitle: 'הוספת הוצאות מקטגוריה',
     templateHint: 'הקלידו מחיר לכל פריט שקניתם. פריט בלי מחיר לא יתווסף.',
@@ -1331,6 +1343,9 @@ const TEXT = {
     lightTheme: 'Light style',
     businessTitle: 'Business',
     clearHistory: 'Clear history',
+    pickSection: (heardText, amountText) => 'I heard: "' + heardText + '"\n' + amountText + ' - spending\nThis is in both Personal and Business. Where should it go?',
+    pickSayHint: 'You can also say the answer, for example "personal" or "business".',
+    pickNotUnderstood: 'I did not understand. Say it again or tap a button.',
     templateBtn: 'Add from a category',
     templateTitle: 'Add spending from a category',
     templateHint: 'Type a price for each item you bought. Items without a price are not added.',
@@ -1429,7 +1444,7 @@ function toggleLang() {
 
 // ---- Settings: hide the instruction texts (the ones that tell you what to say) ----
 // Saved as money_hide_hints ('1' = hidden), with the other settings, so it stays after a reload.
-const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint'];
+const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint', 'pickSayHint'];
 function hintsHidden() { return LS.getItem('money_hide_hints') === '1'; }
 // An instruction text, or nothing when instructions are hidden.
 function hint(key) { return hintsHidden() ? '' : T()[key]; }
@@ -1506,60 +1521,111 @@ function loadBusiness() {
   try { const l = JSON.parse(LS.getItem('money_business') || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.amount === 'number') : []; } catch (e) { return []; }
 }
 function saveBusiness() { LS.setItem('money_business', JSON.stringify(businessSpend)); }
-function addBusinessSpend(amount, note, item) {
+function addBusinessSpend(amount, note, item, cat) {
   const now = new Date();
   const entry = { id: 'z' + Date.now(), amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
   if (item) entry.item = item;
+  else if (cat) entry.cat = cat;
   businessSpend.unshift(entry);
   saveBusiness();
   renderBusiness();
 }
-function addPersonalEntry(kind, amount, note, item) {
+function addPersonalEntry(kind, amount, note, item, cat) {
   const now = new Date();
   const entry = { id: 'p' + Date.now() + Math.random().toString(36).slice(2, 6), kind: kind, amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
   if (item && kind !== 'income') entry.item = item;
+  else if (cat && kind !== 'income') entry.cat = cat;
   personal.unshift(entry);
   savePersonal();
   renderPersonalPage();
 }
 
 // ---- What was bought: a list of items, each in a category (חשמל, אוכל, חומרים...) ----
-// Saved as money_items [{ name, cat }] and money_cats [names]. A spending entry keeps the item's name in "item";
-// its category is looked up in the list, so changing an item's category also changes the summaries.
+// Each section has its own list: 'business' (ניהול כספים / עסק, saved as money_items + money_cats) and
+// 'personal' (אישי, saved as money_items_p + money_cats_p). A spending entry keeps the item's name in "item";
+// its category is looked up in its section's list, so changing an item's category also changes the summaries.
+const ITEM_KEYS = { business: ['money_items', 'money_cats'], personal: ['money_items_p', 'money_cats_p'] };
+let itemsScope = 'business'; // the section whose "פריטים וקטגוריות" window is open
+function scopeOf(scope) { return scope === 'personal' ? 'personal' : (scope === 'business' ? 'business' : itemsScope); }
 const SEED_ITEMS = {
   he: { cats: ['חומרים', 'חשמל', 'אוכל'], items: [['צבע', 'חומרים'], ['מברשת צבע', 'חומרים'], ['סיליקון', 'חומרים'], ['שפכטל', 'חומרים']] },
   en: { cats: ['Materials', 'Electricity', 'Food'], items: [['Paint', 'Materials'], ['Paint brush', 'Materials'], ['Silicone', 'Materials'], ['Filler', 'Materials']] }
 };
-function getItems() {
-  try { const l = JSON.parse(LS.getItem('money_items') || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.name === 'string' && x.name) : []; } catch (e) { return []; }
+function getItems(scope) {
+  try { const l = JSON.parse(LS.getItem(ITEM_KEYS[scopeOf(scope)][0]) || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.name === 'string' && x.name) : []; } catch (e) { return []; }
 }
-function saveItems(list) { LS.setItem('money_items', JSON.stringify(list)); }
-function getCats() {
+function saveItems(list, scope) { LS.setItem(ITEM_KEYS[scopeOf(scope)][0], JSON.stringify(list)); }
+function getCats(scope) {
   let l = [];
-  try { l = JSON.parse(LS.getItem('money_cats') || '[]'); } catch (e) { l = []; }
+  try { l = JSON.parse(LS.getItem(ITEM_KEYS[scopeOf(scope)][1]) || '[]'); } catch (e) { l = []; }
   if (!Array.isArray(l)) l = [];
   l = l.filter(c => typeof c === 'string' && c);
-  getItems().forEach(it => { if (it.cat && l.indexOf(it.cat) < 0) l.push(it.cat); });
+  getItems(scope).forEach(it => { if (it.cat && l.indexOf(it.cat) < 0) l.push(it.cat); });
   return l;
 }
-function saveCats(list) { LS.setItem('money_cats', JSON.stringify(list)); }
+function saveCats(list, scope) { LS.setItem(ITEM_KEYS[scopeOf(scope)][1], JSON.stringify(list)); }
+// Rename a category in a section: the category and every item in it.
+async function renameCategory(scope, old, msgEl) {
+  const answer = await askText(T().renameCat, old);
+  const clean = String(answer || '').trim();
+  if (!clean || clean === old) return null;
+  if (getCats(scope).indexOf(clean) >= 0) { if (msgEl) msgEl.textContent = T().catExists; return null; }
+  saveCats(getCats(scope).map(c => c === old ? clean : c), scope);
+  saveItems(getItems(scope).map(x => x.cat === old ? { name: x.name, cat: clean } : x), scope);
+  itemsChanged();
+  return clean;
+}
+// Delete a category in a section with its items (asks first). Spending already saved stays.
+async function removeCategory(scope, old) {
+  if (!(await askConfirm(T().removeCatSure.replace('{c}', old)))) return false;
+  saveItems(getItems(scope).filter(x => x.cat !== old), scope);
+  saveCats(getCats(scope).filter(c => c !== old), scope);
+  itemsChanged();
+  return true;
+}
 // First time only: start the list with a few work materials. They can be changed or removed.
 function seedItems() {
   if (LS.getItem('money_items') !== null) return;
   const s = SEED_ITEMS[lang] || SEED_ITEMS.he;
-  saveCats(s.cats.slice());
-  saveItems(s.items.map(x => ({ name: x[0], cat: x[1] })));
+  saveCats(s.cats.slice(), 'business');
+  saveItems(s.items.map(x => ({ name: x[0], cat: x[1] })), 'business');
+}
+// Once: until now there was one shared list. It becomes the business list, except categories that were only
+// used for personal spending, and the empty household categories (חשמל, אוכל), which move to אישי.
+function splitItemSections() {
+  if (LS.getItem('money_items_p') !== null) return;
+  const items = getItems('business');
+  const cats = getCats('business');
+  const usedPersonal = new Set(personal.filter(p => p.item).map(p => p.item));
+  const usedWork = new Set();
+  boxes.forEach(b => (b.entries || []).forEach(e => { if (e.item) usedWork.add(e.item); }));
+  businessSpend.forEach(x => { if (x.item) usedWork.add(x.item); });
+  const household = ['חשמל', 'אוכל', 'Electricity', 'Food'];
+  const toPersonal = cats.filter(c => {
+    const its = items.filter(i => i.cat === c);
+    if (!its.length) return household.indexOf(c) >= 0;
+    return its.some(i => usedPersonal.has(i.name)) && !its.some(i => usedWork.has(i.name));
+  });
+  saveItems(items.filter(i => toPersonal.indexOf(i.cat) >= 0), 'personal');
+  saveCats(toPersonal, 'personal');
+  saveItems(items.filter(i => toPersonal.indexOf(i.cat) < 0), 'business');
+  saveCats(cats.filter(c => toPersonal.indexOf(c) < 0), 'business');
 }
 function normWord(w) {
   return String(w || '').toLowerCase().replace(/[֑-ׇ"'׳״]/g, '')
     .replace(/ך/g, 'כ').replace(/ם/g, 'מ').replace(/ן/g, 'נ').replace(/ף/g, 'פ').replace(/ץ/g, 'צ');
 }
 function normKey(text) { return String(text || '').split(/\s+/).map(normWord).join(''); }
-function itemCategory(name) {
+// The category of an item: looked up in its section first, then in the other one.
+function itemCategory(name, scope) {
   if (!name) return '';
   const n = normKey(name);
-  const it = getItems().find(x => normKey(x.name) === n);
-  return it ? (it.cat || '') : '';
+  const first = scope === 'personal' ? 'personal' : 'business';
+  for (const sc of [first, first === 'personal' ? 'business' : 'personal']) {
+    const it = getItems(sc).find(x => normKey(x.name) === n);
+    if (it) return it.cat || '';
+  }
+  return '';
 }
 function editDistance(a, b) {
   const row = [];
@@ -1583,10 +1649,10 @@ function sentenceWords(sentence) {
 }
 // Finds the item from the list that sounds closest to words in what was said.
 // Returns { name, used: [the word positions it took] }, or null when nothing is close enough.
-function findItem(sentence) {
+function findItem(sentence, scope) {
   const words = sentenceWords(sentence);
   let best = null;
-  getItems().forEach(it => {
+  getItems(scope === 'personal' ? 'personal' : 'business').forEach(it => {
     const parts = it.name.split(/\s+/).filter(Boolean).map(normWord);
     const k = parts.length;
     const target = parts.join('');
@@ -1619,6 +1685,33 @@ function findItem(sentence) {
   });
   return best;
 }
+// Finds a category of a section said in the sentence ("100 שקל חשמל"). Returns { name, used } or null.
+function findCategoryWord(sentence, scope) {
+  const words = sentenceWords(sentence);
+  let best = null;
+  getCats(scope).forEach(c => {
+    const parts = c.split(/\s+/).filter(Boolean).map(normWord);
+    const k = parts.length;
+    const target = parts.join('');
+    if (!k || target.length < 2) return;
+    for (let i = 0; i + k <= words.length; i++) {
+      const win = words.slice(i, i + k);
+      if (win.some(w => /\d/.test(w))) continue;
+      const tail = win.slice(1).map(normWord).join('');
+      let score = 0;
+      wordForms(win[0]).forEach(f => {
+        const said = f + tail;
+        if (said === target) score = Math.max(score, 1);
+        else if (Math.max(said.length, target.length) >= 4) {
+          const r = 1 - editDistance(said, target) / Math.max(said.length, target.length);
+          if (r >= 0.8) score = Math.max(score, r);
+        }
+      });
+      if (score && (!best || score > best.score)) best = { name: c, score: score, used: parts.map((x, j) => i + j) };
+    }
+  });
+  return best;
+}
 // What was said, without the item's words (so the card name can be found in the rest).
 function withoutItem(sentence, match) {
   if (!match) return sentence;
@@ -1626,22 +1719,22 @@ function withoutItem(sentence, match) {
 }
 function itemLabel(item) {
   if (!item) return '';
-  const cat = itemCategory(item);
+  const cat = itemCategory(item, 'business');
   return cat ? item + ' · ' + cat : item;
 }
 
 // ---- Category templates (אישי): a category is a saved list of item names, no prices ----
 // Choosing a category shows all its items, each with an empty price to type (prices change).
 // "הוספת הכל" adds every item that got a price as personal spending. Items and categories are the same
-// list as in "פריטים וקטגוריות" (money_items / money_cats), so they are saved and synced with it.
+// list as the אישי "פריטים וקטגוריות" (money_items_p / money_cats_p), so they are saved and synced with it.
 let tplCat = '';
 const tplPrices = {}; // item name -> the price typed for it, while the window is open
-function tplItems() { return getItems().filter(it => (it.cat || '') === tplCat && tplCat).sort((a, b) => a.name.localeCompare(b.name)); }
+function tplItems() { return getItems('personal').filter(it => (it.cat || '') === tplCat && tplCat).sort((a, b) => a.name.localeCompare(b.name)); }
 function fillTplSelect() {
   const t = T();
   const sel = document.getElementById('tplCat');
   sel.innerHTML = '';
-  const cats = getCats();
+  const cats = getCats('personal');
   if (tplCat && cats.indexOf(tplCat) < 0) tplCat = '';
   if (!tplCat) tplCat = cats[0] || '';
   cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); });
@@ -1662,8 +1755,8 @@ async function tplCatChanged(sel) {
   const answer = await askText(T().newCatPrompt, '');
   const clean = String(answer || '').trim();
   if (clean) {
-    const cats = getCats();
-    if (cats.indexOf(clean) < 0) { cats.push(clean); saveCats(cats); }
+    const cats = getCats('personal');
+    if (cats.indexOf(clean) < 0) { cats.push(clean); saveCats(cats, 'personal'); }
     tplCat = clean;
     itemsChanged();
   }
@@ -1700,9 +1793,9 @@ function drawTemplate() {
     name.title = t.renameItem;
     name.textContent = it.name;
     name.onclick = async () => {
-      const before = getItems().map(x => x.name);
-      await renameItem(it.name);
-      const after = getItems().map(x => x.name);
+      const before = getItems('personal').map(x => x.name);
+      await renameItem(it.name, 'personal');
+      const after = getItems('personal').map(x => x.name);
       const renamed = after.find(x => before.indexOf(x) < 0);
       if (renamed && it.name in tplPrices) { tplPrices[renamed] = tplPrices[it.name]; delete tplPrices[it.name]; }
       drawTemplate();
@@ -1723,7 +1816,7 @@ function drawTemplate() {
     del.textContent = '✕';
     del.onclick = async () => {
       if (!(await askConfirm(T().removeItemSure))) return;
-      saveItems(getItems().filter(y => y.name !== it.name));
+      saveItems(getItems('personal').filter(y => y.name !== it.name), 'personal');
       delete tplPrices[it.name];
       itemsChanged();
       drawTemplate();
@@ -1741,14 +1834,14 @@ function addTplItem() {
   const name = input.value.trim().replace(/[.!?,]+$/, '');
   if (!tplCat) return;
   if (!name) { msg.textContent = t.itemEmpty; return; }
-  const list = getItems();
+  const list = getItems('personal');
   const have = list.find(x => normKey(x.name) === normKey(name));
   if (have) {
     if (have.cat === tplCat) msg.textContent = t.itemExists;
-    else { have.cat = tplCat; saveItems(list); msg.textContent = t.tplItemMoved; }
+    else { have.cat = tplCat; saveItems(list, 'personal'); msg.textContent = t.tplItemMoved; }
   } else {
     list.push({ name: name, cat: tplCat });
-    saveItems(list);
+    saveItems(list, 'personal');
     msg.textContent = t.itemAdded + name;
   }
   input.value = '';
@@ -1758,25 +1851,13 @@ function addTplItem() {
 }
 async function renameTplCat() {
   if (!tplCat) return;
-  const old = tplCat;
-  const answer = await askText(T().renameCat, old);
-  const clean = String(answer || '').trim();
-  if (!clean || clean === old) return;
-  if (getCats().indexOf(clean) >= 0) { document.getElementById('tplMsg').textContent = T().catExists; return; }
-  saveCats(getCats().map(c => c === old ? clean : c));
-  saveItems(getItems().map(x => x.cat === old ? { name: x.name, cat: clean } : x));
-  tplCat = clean;
-  itemsChanged();
+  const clean = await renameCategory('personal', tplCat, document.getElementById('tplMsg'));
+  if (clean) tplCat = clean;
   drawTemplate();
 }
 async function removeTplCat() {
   if (!tplCat) return;
-  const old = tplCat;
-  if (!(await askConfirm(T().removeCatSure.replace('{c}', old)))) return;
-  saveItems(getItems().filter(x => x.cat !== old));
-  saveCats(getCats().filter(c => c !== old));
-  tplCat = '';
-  itemsChanged();
+  if (await removeCategory('personal', tplCat)) tplCat = '';
   drawTemplate();
 }
 // Adds every item that got a price as personal spending, then shows the spending list.
@@ -1793,9 +1874,14 @@ function addTemplateEntries() {
 }
 
 // The items window: add an item (type it or say it), set its category, rename it or remove it.
-function openItems() {
+// scope: 'business' (ניהול כספים) or 'personal' (אישי). Each section has its own items and categories.
+function openItems(scope) {
+  const changed = scopeOf(scope) !== itemsScope;
+  itemsScope = scope === 'personal' ? 'personal' : 'business';
+  document.getElementById('itemsTitle').textContent = T().itemsTitle + ' - ' + (itemsScope === 'personal' ? T().personalBtn : T().businessTitle);
   const sel = document.getElementById('itemCatSel');
-  fillCatSelect(sel, sel.value && sel.value !== '__new__' ? sel.value : (getCats()[0] || ''));
+  const keep = !changed && sel.value && sel.value !== '__new__' && getCats().indexOf(sel.value) >= 0;
+  fillCatSelect(sel, keep ? sel.value : '');
   sel.dataset.prev = sel.value;
   document.getElementById('itemMsg').textContent = hint('sayItemHint');
   drawItems();
@@ -1817,6 +1903,20 @@ function fillCatSelect(sel, value) {
   sel.value = value || '';
 }
 // A category menu changed: "new category" asks for the name first.
+// Rename or delete the category chosen in the items window.
+async function renameChosenCat() {
+  const sel = document.getElementById('itemCatSel');
+  if (!sel.value || sel.value === '__new__') return;
+  const clean = await renameCategory(itemsScope, sel.value, document.getElementById('itemMsg'));
+  if (clean) { fillCatSelect(sel, clean); sel.dataset.prev = clean; }
+  drawItems();
+}
+async function removeChosenCat() {
+  const sel = document.getElementById('itemCatSel');
+  if (!sel.value || sel.value === '__new__') return;
+  if (await removeCategory(itemsScope, sel.value)) { fillCatSelect(sel, ''); sel.dataset.prev = ''; }
+  drawItems();
+}
 async function pickCat(sel, current, onSet) {
   if (sel.value !== '__new__') { onSet(sel.value); return; }
   const answer = await askText(T().newCatPrompt, '');
@@ -1826,8 +1926,9 @@ async function pickCat(sel, current, onSet) {
   if (cats.indexOf(clean) < 0) { cats.push(clean); saveCats(cats); }
   onSet(clean);
 }
+// Choosing a category shows only its items (to add, rename or remove them) and the buttons to rename or delete it.
 function newItemCatChanged(sel) {
-  pickCat(sel, sel.dataset.prev, v => { fillCatSelect(sel, v); sel.dataset.prev = v; });
+  pickCat(sel, sel.dataset.prev, v => { fillCatSelect(sel, v); sel.dataset.prev = v; drawItems(); });
 }
 function itemsChanged() {
   if (!booted) return;
@@ -1873,8 +1974,14 @@ function drawItems() {
   const t = T();
   const box = document.getElementById('itemsList');
   box.innerHTML = '';
-  const list = getItems();
-  if (!list.length) { box.appendChild(cell(t.noItems, 'savedTitle')); return; }
+  const chosen = document.getElementById('itemCatSel').value;
+  const editing = chosen && chosen !== '__new__';
+  document.getElementById('catTools').style.display = editing ? '' : 'none';
+  document.getElementById('catRename').title = t.renameCat;
+  document.getElementById('catRemove').title = t.removeBox;
+  // A chosen category: only its items. "ללא קטגוריה": everything, by category.
+  const list = getItems().filter(it => !editing || it.cat === chosen);
+  if (!list.length) { box.appendChild(cell(editing ? t.tplEmpty : t.noItems, 'savedTitle')); return; }
   const groups = {};
   list.forEach(it => { const c = it.cat || ''; (groups[c] = groups[c] || []).push(it); });
   Object.keys(groups).sort((a, b) => (a === '') - (b === '') || a.localeCompare(b)).forEach(c => {
@@ -1914,35 +2021,42 @@ function drawItems() {
     });
   });
 }
-async function renameItem(oldName) {
+async function renameItem(oldName, scope) {
+  scope = scopeOf(scope);
   const answer = await askText(T().renameItem, oldName);
   const clean = String(answer || '').trim();
   if (!clean || clean === oldName) return;
-  const all = getItems();
+  const all = getItems(scope);
   if (all.some(y => y.name !== oldName && normKey(y.name) === normKey(clean))) { document.getElementById('itemMsg').textContent = T().itemExists; return; }
   const x = all.find(y => y.name === oldName);
-  if (x) { x.name = clean; saveItems(all); }
-  // Entries that were saved with the old name follow the new one.
-  let changed = false;
-  boxes.forEach(b => (b.entries || []).forEach(e => { if (e.item === oldName) { e.item = clean; changed = true; } }));
-  if (changed) saveBoxes();
-  let pChanged = false;
-  personal.forEach(p => { if (p.item === oldName) { p.item = clean; pChanged = true; } });
-  if (pChanged) savePersonal();
+  if (x) { x.name = clean; saveItems(all, scope); }
+  // Entries of this section that were saved with the old name follow the new one.
+  if (scope === 'business') {
+    let changed = false;
+    boxes.forEach(b => (b.entries || []).forEach(e => { if (e.item === oldName) { e.item = clean; changed = true; } }));
+    if (changed) saveBoxes();
+    let bChanged = false;
+    businessSpend.forEach(e => { if (e.item === oldName) { e.item = clean; bChanged = true; } });
+    if (bChanged) saveBusiness();
+  } else {
+    let pChanged = false;
+    personal.forEach(p => { if (p.item === oldName) { p.item = clean; pChanged = true; } });
+    if (pChanged) savePersonal();
+  }
   drawItems();
   itemsChanged();
   renderHome();
 }
 
 // Spending grouped by category, and by item inside each category. Used by both summaries.
-function renderCategoryBreakdown(box, entries, foldPrefix, redraw, emptyText) {
+function renderCategoryBreakdown(box, entries, foldPrefix, redraw, emptyText, scope) {
   const t = T();
   if (!entries.length) { box.appendChild(cell(emptyText, 'savedTitle')); return; }
   const cats = {};
   let grand = 0;
   entries.forEach(e => {
     const item = e.item || '';
-    const cat = (item && itemCategory(item)) || '';
+    const cat = (item && itemCategory(item, scope)) || e.cat || '';
     const c = cats[cat] = cats[cat] || { total: 0, items: {} };
     const key = item || t.noItem;
     c.items[key] = (c.items[key] || 0) + e.amount;
@@ -2039,7 +2153,7 @@ function renderPersonalPage() {
   if (shown.length === 0) { box.appendChild(cell(isIn ? t.noPersonalIn : t.noPersonal, 'savedTitle')); return; }
   // By category: how much personal spending went on each category (חשמל, אוכל...).
   if (!isIn && personalView === 'category') {
-    renderCategoryBreakdown(box, shown, 'personal', renderPersonalPage, t.noPersonal);
+    renderCategoryBreakdown(box, shown, 'personal', renderPersonalPage, t.noPersonal, 'personal');
     return;
   }
   const periods = {};
@@ -2085,7 +2199,7 @@ function renderPersonalPage() {
       del.textContent = '✕';
       del.onclick = () => { personal = personal.filter(x => x !== p); savePersonal(); renderPersonalPage(); };
       const noteCell = cell(shownNote(p), 'perNote');
-      if (itemTag(p)) noteCell.appendChild(cell(itemTag(p), 'itemChip'));
+      if (itemTag(p, 'personal')) noteCell.appendChild(cell(itemTag(p, 'personal'), 'itemChip'));
       line.append(cell(p.date || '', 'perDate'), noteCell, amt, edit, del);
       box.appendChild(line);
     });
@@ -2270,7 +2384,7 @@ function renderSummaries() {
   else {
     const head = document.createElement('div');
     head.className = 'periodRow head';
-    head.append(cell(''), cell(t.colJob), cell(t.colLeft));
+    head.append(cell(''), cell(t.colIn), cell(t.colJob), cell(t.colLeft));
     jobBox.appendChild(head);
     jobKeys.forEach((k, idx) => {
       // Each black date bar folds; only the newest is open until you click.
@@ -2294,7 +2408,7 @@ function renderSummaries() {
         const openKey = jobView + '|' + k + '|' + id;
         const isOpen = openSummaryRows.has(openKey);
         row.classList.add('clickRow');
-        row.append(cell((isOpen ? '▾ ' : '▸ ') + r.name, 'period'), cell(r.job.toFixed(2)), cell((r.income - r.job).toFixed(2)));
+        row.append(cell((isOpen ? '▾ ' : '▸ ') + r.name, 'period'), cell(r.income.toFixed(2)), cell(r.job.toFixed(2)), cell((r.income - r.job).toFixed(2)));
         row.onclick = () => {
           if (openSummaryRows.has(openKey)) openSummaryRows.delete(openKey); else openSummaryRows.add(openKey);
           renderSummaries();
@@ -2322,7 +2436,7 @@ function renderSummaries() {
       });
       const total = document.createElement('div');
       total.className = 'periodRow totalRow';
-      total.append(cell(t.totalLabel, 'period'), cell(totalJob.toFixed(2)), cell((totalIncome - totalJob).toFixed(2)));
+      total.append(cell(t.totalLabel, 'period'), cell(totalIncome.toFixed(2)), cell(totalJob.toFixed(2)), cell((totalIncome - totalJob).toFixed(2)));
       jobBox.appendChild(total);
     });
   }
@@ -2959,7 +3073,7 @@ function shownNote(e) {
   return e.note || '';
 }
 // The small tag under a spending entry: its category (the text already is the item).
-function itemTag(e) { return e.item ? itemCategory(e.item) : ''; }
+function itemTag(e, scope) { return e.item ? itemCategory(e.item, scope) : (e.cat || ''); }
 
 // The microphone inside a card: a number goes to job spending, unless the sentence says "קיבלתי" (money in).
 function handleText(sentence) {
@@ -2969,7 +3083,7 @@ function handleText(sentence) {
   const amount = findAmount(sentence);
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
   const kind = sentenceAction(sentence) || 'job';
-  const item = kind === 'job' ? findItem(withoutActions(sentence)) : null;
+  const item = kind === 'job' ? findItem(withoutActions(sentence), 'business') : null;
   if (kind === 'job' && saysBusiness(sentence)) { // "... לעסק": business spending, not this card
     addBusinessSpend(amount, spendNote(sentence, item ? item.name : '', null), item ? item.name : '');
     heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (item ? ' · ' + item.name : '');
@@ -2996,7 +3110,7 @@ function addArrow(kind) {
   kind = sentenceAction(box.value) || kind; // typed "קיבלתי 500 שקל" is money in
   const amount = findAmount(box.value);
   if (amount === null) { heard.textContent = T().typeFirst; return; }
-  const typedItem = kind === 'job' ? findItem(box.value) : null;
+  const typedItem = kind === 'job' ? findItem(box.value, 'business') : null;
   addEntry(kind, amount, cardNote(kind, box.value, typedItem ? typedItem.name : '', null), typedItem ? typedItem.name : '');
   heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind];
   box.value = '';
@@ -3064,7 +3178,7 @@ async function doRestoreBackup(box) {
 
 // ---- Backup to a file, and load it back without doubles ----
 async function saveBackupFile() {
-  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames(), items: getItems(), cats: getCats(), business: businessSpend }, null, 1);
+  const data = JSON.stringify({ app: 'money-tracker-all', saved: new Date().toISOString(), boxes: boxes, names: getNames(), items: getItems('business'), cats: getCats('business'), itemsPersonal: getItems('personal'), catsPersonal: getCats('personal'), business: businessSpend }, null, 1);
   const blob = new Blob([data], { type: 'application/json' });
   const stamp = new Date().toISOString().slice(0, 10);
   const fileName = 'money-tracker-backup-' + stamp + '.json';
@@ -3149,18 +3263,28 @@ function loadBackupFile(event) {
     });
     if (Array.isArray(data.names)) data.names.forEach(n => { if (typeof n === 'string' && n) rememberName(n); });
     // Items and categories in the file are added to the list, skipping ones that are already there.
-    if (Array.isArray(data.items)) {
-      const list = getItems();
-      data.items.forEach(it => { if (it && typeof it.name === 'string' && it.name && !list.some(x => normKey(x.name) === normKey(it.name))) list.push({ name: it.name, cat: typeof it.cat === 'string' ? it.cat : '' }); });
-      saveItems(list);
-    }
+    const mergeItems = (items, scope) => {
+      if (!Array.isArray(items)) return;
+      const list = getItems(scope);
+      items.forEach(it => { if (it && typeof it.name === 'string' && it.name && !list.some(x => normKey(x.name) === normKey(it.name))) list.push({ name: it.name, cat: typeof it.cat === 'string' ? it.cat : '' }); });
+      saveItems(list, scope);
+    };
+    const mergeCats = (cats, scope) => {
+      if (!Array.isArray(cats)) return;
+      const have = getCats(scope);
+      cats.forEach(c => { if (typeof c === 'string' && c && have.indexOf(c) < 0) have.push(c); });
+      saveCats(have, scope);
+    };
+    mergeItems(data.items, 'business');
+    mergeItems(data.itemsPersonal, 'personal');
+    mergeCats(data.catsPersonal, 'personal');
     if (Array.isArray(data.business)) {
       const have = new Set(businessSpend.map(x => x.id));
       data.business.forEach(x => { if (x && typeof x.amount === 'number' && !have.has(x.id)) { businessSpend.push(x); have.add(x.id); } });
       saveBusiness();
       renderBusiness();
     }
-    if (Array.isArray(data.cats)) { const cats = getCats(); data.cats.forEach(c => { if (typeof c === 'string' && c && cats.indexOf(c) < 0) cats.push(c); }); saveCats(cats); }
+    mergeCats(data.cats, 'business');
     saveBoxes();
     renderHome();
     document.getElementById('fileMsg').textContent = T().fileResult.replace('{added}', added).replace('{skipped}', skipped);
@@ -3267,30 +3391,80 @@ function soundKey(text) {
   s = s.replace(/ch/g, 'h').replace(/kh/g, 'h').replace(/ph/g, 'p').replace(/c/g, 'k').replace(/q/g, 'k').replace(/w/g, 'v').replace(/x/g, 'ks').replace(/j/g, 'g').replace(/[aeiouy]/g, '').replace(/[^a-z]/g, '');
   return s.replace(/(.)\1+/g, '$1');
 }
-// The "where should this go?" window: personal first, then every open card.
-function chooseTarget(sentence, amount, kind, msg, item) {
+// A small window with buttons to tap. Its microphone opens by itself, so the answer can just be said
+// ("אישי", "עסק", or a card's name). options: [{ label, cls, match(text) -> true when the answer means it, pick() }]
+let pickOpenId = 0;
+function showPick(message, options, onCancel) {
   const t = T();
   const ov = document.getElementById('pickOverlay');
   const list = document.getElementById('pickList');
-  const kindText = (kind === 'income' ? t.kinds.income : t.kinds.job) + (item ? ' · ' + item : '');
-  document.getElementById('pickText').textContent = t.pickWhere(sentence, amount.toFixed(2), kindText);
+  const micBtn = document.getElementById('pickMic');
+  const micMsg = document.getElementById('pickMicMsg');
+  const id = ++pickOpenId;
+  let done = false;
+  const close = () => {
+    done = true;
+    ov.classList.remove('show');
+    if (activeRec && activeRec.btn === micBtn) activeRec.cancel();
+    if (dictation && dictation.active()) dictation.stop().catch(() => {});
+  };
+  document.getElementById('pickText').textContent = message;
   list.innerHTML = '';
-  const close = () => ov.classList.remove('show');
-  const personalBtn = document.createElement('button');
-  personalBtn.className = 'pickPersonal';
-  personalBtn.textContent = t.personalBtn;
-  personalBtn.onclick = () => {
-    close();
+  options.forEach(o => {
+    const btn = document.createElement('button');
+    if (o.cls) btn.className = o.cls;
+    btn.textContent = o.label;
+    btn.onclick = () => { close(); o.pick(); };
+    list.appendChild(btn);
+  });
+  const cancel = document.getElementById('pickCancel');
+  cancel.textContent = t.cancelBtn;
+  cancel.onclick = () => { close(); if (onCancel) onCancel(); };
+  const canListen = !!(SR || dictation);
+  micBtn.style.display = canListen ? '' : 'none';
+  micMsg.textContent = canListen ? hint('pickSayHint') : '';
+  const listenAnswer = () => startVoice(micBtn, micMsg, text => {
+    if (done || id !== pickOpenId) return;
+    const hit = options.filter(o => o.match && o.match(text));
+    if (hit.length === 1) { close(); hit[0].pick(); return; }
+    micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
+  });
+  micBtn.onclick = listenAnswer;
+  ov.classList.add('show');
+  // Open the microphone by itself (a moment later, so the microphone that was just used has fully stopped).
+  if (canListen) setTimeout(() => { if (!done && id === pickOpenId && ov.classList.contains('show') && !activeRec) listenAnswer(); }, 400);
+}
+// Does a spoken answer name this card?
+function answerIsCard(text, b) { const m = findCard(text, null); return !!(m && m.b === b); }
+// Spending that matches a category or item in both אישי and עסק: ask which one (tap or say it).
+function askSection(sentence, amount, msg, p, b) {
+  const t = T();
+  showPick(t.pickSection(sentence, amount.toFixed(2)), [
+    { label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => {
+      addPersonalEntry('job', amount, spendNote(sentence, p.item, null), p.item, p.cat);
+      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.personalOutKind + (p.item || p.cat ? ' · ' + (p.item || p.cat) : '');
+    } },
+    { label: t.businessTitle, cls: 'pickBusiness', match: saysBusiness, pick: () => {
+      addBusinessSpend(amount, spendNote(sentence, b.item, null), b.item, b.cat);
+      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (b.item || b.cat ? ' · ' + (b.item || b.cat) : '');
+    } }
+  ], () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; });
+}
+// The "where should this go?" window: personal first, then business (for spending), then every open card.
+function chooseTarget(sentence, amount, kind, msg, item) {
+  const t = T();
+  const kindText = (kind === 'income' ? t.kinds.income : t.kinds.job) + (item ? ' · ' + item : '');
+  const options = [{ label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => {
     addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
     msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind) + (item && kind !== 'income' ? ' · ' + item : '');
-  };
-  list.appendChild(personalBtn);
+  } }];
+  if (kind !== 'income') options.push({ label: t.businessTitle, cls: 'pickBusiness', match: saysBusiness, pick: () => {
+    addBusinessSpend(amount, spendNote(sentence, item, null), item);
+    msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (item ? ' · ' + item : '');
+  } });
   boxes.forEach((b, i) => {
     if (b.finished) return;
-    const btn = document.createElement('button');
-    btn.textContent = boxLabel(b, i);
-    btn.onclick = () => {
-      close();
+    options.push({ label: boxLabel(b, i), match: text => answerIsCard(text, b), pick: () => {
       const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, { b: b, i: i }), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
       if (item && kind === 'job') entry.item = item;
       b.entries.unshift(entry);
@@ -3298,13 +3472,9 @@ function chooseTarget(sentence, amount, kind, msg, item) {
       renderHome();
       renderSummaries();
       msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (entry.item ? ' · ' + entry.item : '') + ' (' + boxLabel(b, i) + ')';
-    };
-    list.appendChild(btn);
+    } });
   });
-  const cancel = document.getElementById('pickCancel');
-  cancel.textContent = t.cancelBtn;
-  cancel.onclick = () => { close(); msg.textContent = t.heardWord + ' "' + sentence + '"'; };
-  ov.classList.add('show');
+  showPick(t.pickWhere(sentence, amount.toFixed(2), kindText), options, () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; });
 }
 
 // kind: 'job' (home mic and red start mic) or 'income' (green start mic).
@@ -3318,25 +3488,52 @@ function handleHomeText(sentence, kind, msgEl) {
   // "שילמתי" / "קניתי" means spending; otherwise the mic that was pressed decides.
   kind = sentenceAction(sentence) || kind;
   const plain = withoutActions(sentence); // the action words are not part of the item or the name
-  // Spending can also say what it was for ("דוד 50 שקל צבע"): find the closest item from the list.
-  const itemMatch = kind === 'income' ? null : findItem(plain);
-  const item = itemMatch ? itemMatch.name : '';
+  // Spending can also say what it was for ("דוד 50 שקל צבע"): look for an item or a category of each section.
+  const spend = kind !== 'income';
+  const itemB = spend ? findItem(plain, 'business') : null;
+  const itemP = spend ? findItem(plain, 'personal') : null;
+  const catB = spend ? findCategoryWord(plain, 'business') : null;
+  const catP = spend ? findCategoryWord(plain, 'personal') : null;
+  const itemMatch = itemB || itemP;
+  let item = itemMatch ? itemMatch.name : '';
   // Spending with "לעסק" goes to the business spending (shown in "עסק"), not to a card.
   if (kind === 'job' && saysBusiness(sentence)) {
-    addBusinessSpend(amount, spendNote(sentence, item, null), item);
+    item = itemB ? itemB.name : item;
+    addBusinessSpend(amount, spendNote(sentence, item, null), item, item ? '' : (catB || catP || {}).name);
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.business + (item ? ' · ' + item : '');
     return;
   }
   // An amount followed by "אישי" goes to the personal record instead of a card.
   if (saysPersonal(sentence)) {
-    addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
+    item = itemP ? itemP.name : item;
+    addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item, item ? '' : (catP || catB || {}).name);
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');
     return;
   }
   // Take the number, the item, the action and words like "שקל" away; the card's name is found in what is left.
-  const match = findCard(plain, itemMatch);
+  // The words of the items and categories found are not the card's name.
+  const used = [itemB, itemP, catB, catP].reduce((all, m) => m ? all.concat(m.used) : all, []);
+  const match = findCard(plain, { used: used });
+  if (!match && spend) {
+    // No card named: the section whose items or categories were said gets it ("100 שקל חשמל" -> אישי).
+    const inP = !!(itemP || catP), inB = !!(itemB || catB);
+    const p = { item: itemP ? itemP.name : '', cat: itemP ? '' : (catP ? catP.name : '') };
+    const b = { item: itemB ? itemB.name : '', cat: itemB ? '' : (catB ? catB.name : '') };
+    if (inP && !inB) {
+      addPersonalEntry('job', amount, spendNote(sentence, p.item, null), p.item, p.cat);
+      msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().personalOutKind + ' · ' + (p.item || p.cat);
+      return;
+    }
+    if (inB && !inP) {
+      addBusinessSpend(amount, spendNote(sentence, b.item, null), b.item, b.cat);
+      msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.business + ' · ' + (b.item || b.cat);
+      return;
+    }
+    if (inP && inB) { askSection(sentence, amount, msg, p, b); return; }
+  }
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.
   if (!match) { chooseTarget(sentence, amount, kind, msg, item); return; }
+  if (spend && !itemB && itemP) item = ''; // a card's spending only takes items of the business list
   const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, match), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
   if (item && kind === 'job') entry.item = item;
   match.b.entries.unshift(entry);
@@ -3371,6 +3568,7 @@ async function boot() {
   personal = loadPersonal();
   businessSpend = loadBusiness();
   seedItems();
+  splitItemSections();
   loading.style.display = 'none';
   applyLang();
   closeApp(); // always start on the home screen with the small boxes

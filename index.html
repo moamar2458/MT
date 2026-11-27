@@ -599,6 +599,7 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 /* עוסק פטור: no VAT boxes. The personal % box can be turned off. */
 body:not(.vatOn) .vatOnly { display: none !important; }
 body.pctOff .tenBar { display: none !important; }
+body.noPersonal #personalBtn { display: none !important; }
 .vatBar { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; margin: 8px 0 4px; background: var(--blueBg); border: 1px solid var(--blueLine); }
 .vatBar h3 { margin: 0; font-size: 13px; color: var(--blueText); text-align: start; }
 .vatBar .amount { font-family: var(--num); font-size: 24px; font-weight: 700; color: var(--blueText); direction: ltr; white-space: nowrap; }
@@ -767,6 +768,11 @@ html[dir=rtl] #editAmount { text-align: end; }
     <label class="switchRow">
       <span class="switchText"><span class="switchLabel" data-t="pctSwitch"></span><span class="switchNote" data-t="pctSwitchNote"></span></span>
       <input type="checkbox" id="pctSwitch" role="switch" onchange="setPctShown(this.checked)">
+      <span class="switchTrack" aria-hidden="true"></span>
+    </label>
+    <label class="switchRow">
+      <span class="switchText"><span class="switchLabel" data-t="personalSwitch"></span><span class="switchNote" data-t="personalSwitchNote"></span></span>
+      <input type="checkbox" id="personalSwitch" role="switch" onchange="setPersonalShown(this.checked)">
       <span class="switchTrack" aria-hidden="true"></span>
     </label>
     <!-- Shown when Settings is opened from ניהול כספים -->
@@ -1027,9 +1033,9 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 37;
+const APP_VERSION = 38;
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points', 'money_show_personal'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -1507,6 +1513,8 @@ const TEXT = {
     vatSwitchNote: 'מציג תיבת מע"מ 18%. כבוי = עוסק פטור',
     pctSwitch: 'מעשרות',
     pctSwitchNote: 'תיבת המעשרות (אחוז מההכנסה אחרי הוצאות עבודה) בכרטיס לקוח',
+    personalSwitch: 'אישי',
+    personalSwitchNote: 'כבוי = בלי כפתור אישי ובלי רישום לאישי. מה שכבר נשמר נשאר',
     vatCardLabel: 'מע"מ 18% (כלול בכסף שנכנס)',
     vatMonthLabel: 'מע"מ 18% החודש (כלול בהכנסות)',
     incomeTaxTitle: 'מס הכנסה',
@@ -1721,6 +1729,8 @@ const TEXT = {
     vatSwitchNote: 'Shows an 18% VAT box. Off = exempt dealer (עוסק פטור)',
     pctSwitch: 'Tithes',
     pctSwitchNote: 'The tithes box (a % of income after job costs) in a customer card',
+    personalSwitch: 'Personal',
+    personalSwitchNote: 'Off = no Personal button and nothing goes to Personal. What is saved stays',
     vatCardLabel: 'VAT 18% (included in money in)',
     vatMonthLabel: 'VAT 18% this month (included in income)',
     incomeTaxTitle: 'Income tax',
@@ -1901,11 +1911,18 @@ function vatOn() { return LS.getItem('money_vat') === 'murshe'; }          // ע
 function pctShown() { return LS.getItem('money_show_pct') !== '0'; }       // the personal % box (on unless turned off)
 function setVatMode(murshe) { LS.setItem('money_vat', murshe ? 'murshe' : 'patur'); applyBusinessSettings(); }
 function setPctShown(on) { LS.setItem('money_show_pct', on ? '1' : '0'); applyBusinessSettings(); }
+// אישי on or off (on unless turned off). Off: no "אישי" button, no "אישי" answer in the questions, and voice
+// entries are not sent to אישי. What is already saved in אישי stays, and comes back when it is turned on.
+function personalShown() { return LS.getItem('money_show_personal') !== '0'; }
+function setPersonalShown(on) { LS.setItem('money_show_personal', on ? '1' : '0'); applyBusinessSettings(); }
+function wantsPersonal(text) { return personalShown() && saysPersonal(text); }
 function applyBusinessSettings() {
   document.body.classList.toggle('vatOn', vatOn());
   document.body.classList.toggle('pctOff', !pctShown());
+  document.body.classList.toggle('noPersonal', !personalShown());
   document.getElementById('vatSwitch').checked = vatOn();
   document.getElementById('pctSwitch').checked = pctShown();
+  document.getElementById('personalSwitch').checked = personalShown();
   if (booted) { renderSummaries(); if (currentId) render(); }
 }
 // The VAT inside money received (amounts are recorded as received, VAT included): amount × 18 / 118.
@@ -2144,6 +2161,7 @@ function sentenceWords(sentence) {
 // Finds the item from the list that sounds closest to words in what was said.
 // Returns { name, used: [the word positions it took] }, or null when nothing is close enough.
 function findItem(sentence, scope) {
+  if (scope === 'personal' && !personalShown()) return null; // אישי turned off in Settings
   const words = sentenceWords(sentence);
   let best = null;
   getItems(scope === 'personal' ? 'personal' : 'business').forEach(it => {
@@ -2181,6 +2199,7 @@ function findItem(sentence, scope) {
 }
 // Finds a category of a section said in the sentence ("100 שקל חשמל"). Returns { name, used } or null.
 function findCategoryWord(sentence, scope) {
+  if (scope === 'personal' && !personalShown()) return null; // אישי turned off in Settings
   const words = sentenceWords(sentence);
   let best = null;
   getCats(scope).forEach(c => {
@@ -3924,7 +3943,7 @@ function handleManyItems(sentence, kind, msg, segs) {
     addBusinessSpend(x.amount, spendNote(x.text, item, null), item, item ? '' : (x.b.cat || x.p.cat));
   });
   if (spend && saysBusiness(sentence)) { toBusiness(parts); done(parts, t.businessTitle); return; }
-  if (saysPersonal(sentence)) { toPersonal(parts); done(parts, t.personalBtn); return; }
+  if (wantsPersonal(sentence)) { toPersonal(parts); done(parts, t.personalBtn); return; }
   if (card) { toCard(card, parts); done(parts, boxLabel(card.b, card.i)); return; }
   // A name that is no customer: open a new customer with that name and put all the items in it?
   let newName = parts.map(x => newCustomerName(x.plain, x.used, kind, x.inP || x.inB)).find(Boolean);
@@ -3944,7 +3963,7 @@ function handleManyItems(sentence, kind, msg, segs) {
   const open = parts.filter(x => !(x.inP && !x.inB));
   if (mine.length) toPersonal(mine);
   if (!open.length) { done(mine, t.personalBtn); return; }
-  const options = [{ label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => { toPersonal(open); done(parts, t.personalBtn); } }];
+  const options = [{ label: t.personalBtn, cls: 'pickPersonal', personal: true, match: saysPersonal, pick: () => { toPersonal(open); done(parts, t.personalBtn); } }];
   if (spend) options.push({ label: t.businessTitle, cls: 'pickBusiness', match: saysBusiness, pick: () => { toBusiness(open); done(open, t.businessTitle); } });
   boxes.forEach((b, i) => {
     if (b.finished) return;
@@ -4506,6 +4525,7 @@ let pickOpenId = 0;
 // yesNo: the options are כן / לא, so there is no extra "ביטול" button.
 function showPick(message, options, onCancel, hintKey, yesNo) {
   const t = T();
+  options = options.filter(o => !(o.personal && !personalShown())); // אישי turned off: not an answer
   const ov = document.getElementById('pickOverlay');
   const list = document.getElementById('pickList');
   const micBtn = document.getElementById('pickMic');
@@ -4614,7 +4634,7 @@ function askSection(sentence, amount, msg, p, b, kind) {
   kind = kind || 'job';
   const spend = kind !== 'income';
   showPick(t.pickSection(sentence, amount.toFixed(2), spend ? t.kindOut : t.kindIn), [
-    { label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => {
+    { label: t.personalBtn, cls: 'pickPersonal', personal: true, match: saysPersonal, pick: () => {
       addPersonalEntry(kind, amount, spend ? spendNote(sentence, p.item, null) : '', p.item, p.cat);
       msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (spend ? t.personalOutKind : t.personalInKind) + (p.item || p.cat ? ' · ' + (p.item || p.cat) : '');
     } },
@@ -4639,7 +4659,7 @@ function askSection(sentence, amount, msg, p, b, kind) {
 function chooseTarget(sentence, amount, kind, msg, item) {
   const t = T();
   const kindText = (kind === 'income' ? t.kinds.income : t.kinds.job) + (item ? ' · ' + item : '');
-  const options = [{ label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => {
+  const options = [{ label: t.personalBtn, cls: 'pickPersonal', personal: true, match: saysPersonal, pick: () => {
     addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item);
     msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? t.personalInKind : t.personalOutKind) + (item && kind !== 'income' ? ' · ' + item : '');
   } }];
@@ -4670,7 +4690,7 @@ function handleHomeText(sentence, kind, msgEl) {
   // 1. A card's name (with or without ל / מ / ב / ש) chooses the card and is taken out; 2-3. the rest is read.
   // ("אישי" / "לעסק" in the sentence still send it there.)
   const named = sentence ? findNamedCard(sentence) : null;
-  if (named && !saysPersonal(named.rest) && !(saysBusiness(named.rest) && (sentenceAction(named.rest) || kind) !== 'income')) {
+  if (named && !wantsPersonal(named.rest) && !(saysBusiness(named.rest) && (sentenceAction(named.rest) || kind) !== 'income')) {
     handleNamedCard(named, kind, msg);
     return;
   }
@@ -4700,7 +4720,7 @@ function handleHomeText(sentence, kind, msgEl) {
     return;
   }
   // An amount followed by "אישי" goes to the personal record instead of a card.
-  if (saysPersonal(sentence)) {
+  if (wantsPersonal(sentence)) {
     item = itemP ? itemP.name : item;
     addPersonalEntry(kind, amount, kind === 'income' ? '' : spendNote(sentence, item, null), item, item ? '' : (catP || catB || {}).name);
     msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (kind === 'income' ? T().personalInKind : T().personalOutKind) + (item ? ' · ' + item : '');

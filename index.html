@@ -1299,7 +1299,9 @@ const TEXT = {
     addItemBtn: 'הוספת פריט',
     addItemTitle: 'הוספת פריט',
     addItemAsk: '"{x}" לא נמצא ברשימת הפריטים. להוסיף אותו לרשימה?',
-    pickSection: (heardText, amountText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - הוצאה\nזה נמצא גם באישי וגם בלקוחות. לאן להוסיף?',
+    pickSection: (heardText, amountText, kindText) => 'שמעתי: "' + heardText + '"\n' + amountText + ' - ' + (kindText || 'הוצאה') + '\nזה נמצא גם באישי וגם בלקוחות. לאן להוסיף?',
+    pickMany: (heardText, listText) => 'שמעתי: "' + heardText + '"\n' + listText + '\nלאן להוסיף?',
+    addedMany: 'נוספו {n} שורות: ',
     pickSayHint: 'אפשר גם לומר את התשובה, למשל "אישי", "לקוחות" או שם של לקוח.',
     pickNotUnderstood: 'לא הבנתי. אמרו שוב או לחצו על כפתור.',
     templateBtn: 'הוספה מקטגוריה',
@@ -1478,7 +1480,9 @@ const TEXT = {
     addItemBtn: 'Add an item',
     addItemTitle: 'Add an item',
     addItemAsk: '"{x}" is not in the items list. Add it to the list?',
-    pickSection: (heardText, amountText) => 'I heard: "' + heardText + '"\n' + amountText + ' - spending\nThis is in both Personal and Customers. Where should it go?',
+    pickSection: (heardText, amountText, kindText) => 'I heard: "' + heardText + '"\n' + amountText + ' - ' + (kindText || 'spending') + '\nThis is in both Personal and Customers. Where should it go?',
+    pickMany: (heardText, listText) => 'I heard: "' + heardText + '"\n' + listText + '\nWhere should these go?',
+    addedMany: 'Added {n} lines: ',
     pickSayHint: 'You can also say the answer, for example "personal", "customers" or a customer\'s name.',
     pickNotUnderstood: 'I did not understand. Say it again or tap a button.',
     templateBtn: 'Add from a category',
@@ -3129,7 +3133,7 @@ function addBox() {
     boxes.push({ id: id, name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
     saveBoxes();
     renderHome();
-    openApp(id); // the new card opens straight away
+    openCardPage(id); // the new card opens straight away
   });
 }
 function renameBox(event, id) {
@@ -3189,6 +3193,8 @@ const THOUSAND_WORDS = ['thousand', 'אלף', 'אלפים', 'الف', 'ألف', 
 function findAmount(sentence) {
   // Digits written the Arabic way (١٢٣ or ۱۲۳) are turned into 123 first.
   sentence = String(sentence || '').replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0));
+  // "3,000" and "1,250,000" are thousands; "12,5" is a decimal.
+  sentence = sentence.replace(/\d{1,3}(?:,\d{3})+(?![\d,])/g, m => m.replace(/,/g, ''));
   const match = sentence.match(/(\d+(?:[.,]\d+)?)/);
   if (match) return parseFloat(match[1].replace(',', '.'));
   const words = sentence.toLowerCase().replace(/[-,.]/g, ' ').split(/\s+/);
@@ -3425,6 +3431,103 @@ function shownNote(e) {
 // The small tag under a spending entry: its category (the text already is the item).
 function itemTag(e, scope) { return e.item ? itemCategory(e.item, scope) : (e.cat || ''); }
 
+// ---- Several items in one sentence: "30 שקל סיליקון, 5 שקל מברשת, 100 שקל צבע לבתיה" ----
+// Every amount followed by "שקל" starts a new item. Returns [{ text, amount }] (two or more), or null.
+function itemTokens(sentence) {
+  let s = String(sentence || '').toLowerCase();
+  s = s.replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660)).replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06F0));
+  s = s.replace(/\d{1,3}(?:,\d{3})+(?![\d,])/g, m => m.replace(/,/g, '')); // 3,000 -> 3000
+  s = s.replace(/(\d),(\d)/g, '$1.$2');                                      // 12,5 -> 12.5
+  s = s.replace(/([^\d\s.])(\d)/g, '$1 $2').replace(/(\d)([^\d\s.%])/g, '$1 $2');
+  s = s.replace(/(^|[^\d])\.|\.(?!\d)/g, '$1 ');                             // dots that are not decimal points
+  s = s.replace(/[,!?;:()\-،؟]/g, ' ');
+  return s.split(/\s+/).filter(Boolean);
+}
+function splitItems(sentence) {
+  const words = itemTokens(sentence);
+  const isNum = w => /^\d+(\.\d+)?$/.test(w) || isNumberWord(w);
+  const isShekel = w => SHEKEL_WORDS.test(w) || w === '₪';
+  const starts = [];
+  words.forEach((w, j) => {
+    if (!isShekel(w)) return;
+    let i = j;
+    while (i > 0 && isNum(words[i - 1])) i--;
+    if (i === j && j + 1 < words.length && isNum(words[j + 1])) i = j; // "₪30": the sign comes first
+    else if (i === j) return;
+    if (!starts.length || i > starts[starts.length - 1]) starts.push(i);
+  });
+  if (starts.length < 2) return null;
+  const out = starts.map((st, k) => {
+    const text = words.slice(k === 0 ? 0 : st, k + 1 < starts.length ? starts[k + 1] : words.length).join(' ');
+    return { text: text, amount: findAmount(text) };
+  }).filter(x => x.amount !== null && x.amount > 0);
+  return out.length >= 2 ? out : null;
+}
+// The items and categories said in one piece of a sentence, in each section.
+function readPart(text, kind) {
+  const spend = kind !== 'income';
+  const plain = withoutActions(text);
+  const itemB = spend ? findItem(plain, 'business') : null;
+  const itemP = spend ? findItem(plain, 'personal') : null;
+  const catB = findCategoryWord(plain, 'business');
+  const catP = findCategoryWord(plain, 'personal');
+  const used = [itemB, itemP, catB, catP].reduce((all, m) => m ? all.concat(m.used) : all, []);
+  return {
+    text: text, plain: plain, used: used,
+    p: { item: itemP ? itemP.name : '', cat: itemP ? '' : (catP ? catP.name : '') },
+    b: { item: itemB ? itemB.name : '', cat: itemB ? '' : (catB ? catB.name : '') },
+    inP: !!(itemP || catP), inB: !!(itemB || catB)
+  };
+}
+// Adds each item as its own line. A customer's name anywhere (for example "לבתיה" at the end) puts all of them
+// in that card; "לעסק" / "אישי" put all of them there; otherwise each goes where its category is,
+// and one question is asked for the ones that are not clear.
+function handleManyItems(sentence, kind, msg, segs) {
+  const t = T();
+  const spend = kind !== 'income';
+  const parts = segs.map(sg => Object.assign(readPart(sg.text, kind), { amount: sg.amount }));
+  const nameText = parts.map(x => sentenceWords(x.plain).filter((w, i) => x.used.indexOf(i) < 0).join(' ')).join(' ');
+  const card = findCard(nameText, null);
+  const now = () => ({ date: new Date().toLocaleDateString(), day: dayKey(new Date()) });
+  const what = x => spend ? (x.b.item || x.p.item || x.b.cat || x.p.cat || spendNote(x.text, '', card)) : '';
+  const listText = list => list.map(x => x.amount.toFixed(2) + (what(x) ? ' ' + what(x) : '')).join(', ');
+  const done = (list, where) => { msg.textContent = t.addedMany.replace('{n}', list.length) + listText(list) + (where ? ' (' + where + ')' : ''); };
+  // (in reverse, so the first one said is on top of the list)
+  const toCard = (c, list) => {
+    list.slice().reverse().forEach(x => {
+      const item = spend ? x.b.item : '';
+      const entry = Object.assign({ kind: kind, amount: x.amount, note: cardNote(kind, x.text, item, c) }, now());
+      if (item) entry.item = item;
+      c.b.entries.unshift(entry);
+    });
+    saveBoxes(); renderHome(); renderSummaries(); if (currentId) render();
+  };
+  const toPersonal = list => list.slice().reverse().forEach(x => {
+    const item = x.p.item || x.b.item;
+    addPersonalEntry(kind, x.amount, spend ? spendNote(x.text, item, null) : '', item, item ? '' : (x.p.cat || x.b.cat));
+  });
+  const toBusiness = list => list.slice().reverse().forEach(x => {
+    const item = x.b.item || x.p.item;
+    addBusinessSpend(x.amount, spendNote(x.text, item, null), item, item ? '' : (x.b.cat || x.p.cat));
+  });
+  if (spend && saysBusiness(sentence)) { toBusiness(parts); done(parts, t.businessTitle); return; }
+  if (saysPersonal(sentence)) { toPersonal(parts); done(parts, t.personalBtn); return; }
+  if (card) { toCard(card, parts); done(parts, boxLabel(card.b, card.i)); return; }
+  const mine = parts.filter(x => x.inP && !x.inB);   // only in אישי: no question
+  const open = parts.filter(x => !(x.inP && !x.inB));
+  if (mine.length) toPersonal(mine);
+  if (!open.length) { done(mine, t.personalBtn); return; }
+  const options = [{ label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => { toPersonal(open); done(parts, t.personalBtn); } }];
+  if (spend) options.push({ label: t.businessTitle, cls: 'pickBusiness', match: saysBusiness, pick: () => { toBusiness(open); done(open, t.businessTitle); } });
+  boxes.forEach((b, i) => {
+    if (b.finished) return;
+    options.push({ label: boxLabel(b, i), match: text => answerIsCard(text, b), pick: () => { toCard({ b: b, i: i }, open); done(open, boxLabel(b, i)); } });
+  });
+  showPick(t.pickMany(sentence, listText(open)), options, () => {
+    if (mine.length) done(mine, t.personalBtn); else msg.textContent = t.heardWord + ' "' + sentence + '"';
+  });
+}
+
 // The microphone inside a card: a number goes to job spending, unless the sentence says "קיבלתי" (money in).
 function handleText(sentence) {
   sentence = (sentence || '').trim();
@@ -3433,6 +3536,19 @@ function handleText(sentence) {
   const amount = findAmount(sentence);
   if (amount === null) { heard.textContent = t.heardWord + ' "' + sentence + '" ' + t.noAmount; return; }
   const kind = sentenceAction(sentence) || 'job';
+  // Several amounts with "שקל" said at once: each one is its own line in this card.
+  const many = splitItems(sentence);
+  if (many) {
+    const toBiz = kind === 'job' && saysBusiness(sentence);
+    many.slice().reverse().forEach(sg => {
+      const it = kind === 'job' ? findItem(withoutActions(sg.text), 'business') : null;
+      const name = it ? it.name : '';
+      if (toBiz) addBusinessSpend(sg.amount, spendNote(sg.text, name, null), name);
+      else addEntry(kind, sg.amount, cardNote(kind, sg.text, name, null), name);
+    });
+    heard.textContent = t.addedMany.replace('{n}', many.length) + many.map(sg => sg.amount.toFixed(2)).join(', ');
+    return;
+  }
   const item = kind === 'job' ? findItem(withoutActions(sentence), 'business') : null;
   if (kind === 'job' && saysBusiness(sentence)) { // "... לעסק": business spending, not this card
     addBusinessSpend(amount, spendNote(sentence, item ? item.name : '', null), item ? item.name : '');
@@ -3829,27 +3945,29 @@ function showPick(message, options, onCancel) {
 // Does a spoken answer name this card?
 function answerIsCard(text, b) { const m = findCard(text, null); return !!(m && m.b === b); }
 // Spending that matches a category or item in both אישי and עסק: ask which one (tap or say it).
-function askSection(sentence, amount, msg, p, b) {
+function askSection(sentence, amount, msg, p, b, kind) {
   const t = T();
-  showPick(t.pickSection(sentence, amount.toFixed(2)), [
+  kind = kind || 'job';
+  const spend = kind !== 'income';
+  showPick(t.pickSection(sentence, amount.toFixed(2), spend ? t.kindOut : t.kindIn), [
     { label: t.personalBtn, cls: 'pickPersonal', match: saysPersonal, pick: () => {
-      addPersonalEntry('job', amount, spendNote(sentence, p.item, null), p.item, p.cat);
-      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.personalOutKind + (p.item || p.cat ? ' · ' + (p.item || p.cat) : '');
+      addPersonalEntry(kind, amount, spend ? spendNote(sentence, p.item, null) : '', p.item, p.cat);
+      msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + (spend ? t.personalOutKind : t.personalInKind) + (p.item || p.cat ? ' · ' + (p.item || p.cat) : '');
     } },
     // Customers: then which customer (a customer's name said as the answer goes straight to that card).
     { label: t.customersLabel, cls: 'pickBusiness', match: text => saysCustomers(text) || !!findCard(text, null), pick: text => {
       const named = text ? findCard(text, null) : null;
       if (named) {
-        const entry = { kind: 'job', amount: amount, note: cardNote('job', sentence, b.item, named), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
-        if (b.item) entry.item = b.item;
+        const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, b.item, named), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+        if (b.item && spend) entry.item = b.item;
         named.b.entries.unshift(entry);
         saveBoxes();
         renderHome();
         renderSummaries();
-        msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.job + (b.item ? ' · ' + b.item : '') + ' (' + boxLabel(named.b, named.i) + ')';
+        msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (b.item && spend ? ' · ' + b.item : '') + ' (' + boxLabel(named.b, named.i) + ')';
         return;
       }
-      chooseTarget(sentence, amount, 'job', msg, b.item);
+      chooseTarget(sentence, amount, kind, msg, spend ? b.item : '');
     } }
   ], () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; });
 }
@@ -3890,13 +4008,17 @@ function handleHomeText(sentence, kind, msgEl) {
   // The words can come in any order. "קיבלתי" (with an amount or "שקל") always means money in,
   // "שילמתי" / "קניתי" means spending; otherwise the mic that was pressed decides.
   kind = sentenceAction(sentence) || kind;
+  // Several amounts with "שקל": each is its own line.
+  const many = splitItems(sentence);
+  if (many) { handleManyItems(sentence, kind, msg, many); return; }
   const plain = withoutActions(sentence); // the action words are not part of the item or the name
   // Spending can also say what it was for ("דוד 50 שקל צבע"): look for an item or a category of each section.
   const spend = kind !== 'income';
   const itemB = spend ? findItem(plain, 'business') : null;
   const itemP = spend ? findItem(plain, 'personal') : null;
-  const catB = spend ? findCategoryWord(plain, 'business') : null;
-  const catP = spend ? findCategoryWord(plain, 'personal') : null;
+  // Categories decide the place for income too ("3,000 שקל ביטוח לאומי" on the green mic -> אישי).
+  const catB = findCategoryWord(plain, 'business');
+  const catP = findCategoryWord(plain, 'personal');
   const itemMatch = itemB || itemP;
   let item = itemMatch ? itemMatch.name : '';
   // Spending with "לעסק" goes to the business spending (shown in "עסק"), not to a card.
@@ -3917,18 +4039,19 @@ function handleHomeText(sentence, kind, msgEl) {
   // The words of the items and categories found are not the card's name.
   const used = [itemB, itemP, catB, catP].reduce((all, m) => m ? all.concat(m.used) : all, []);
   const match = findCard(plain, { used: used });
-  if (!match && spend) {
-    // No card named: the section whose items or categories were said gets it ("100 שקל חשמל" -> אישי).
+  if (!match) {
+    // No card named: the place whose items or categories were said gets it, with no question when it is
+    // only in one place ("100 שקל חשמל" -> אישי). Asked only when it really is in more than one place.
     const inP = !!(itemP || catP), inB = !!(itemB || catB);
     const p = { item: itemP ? itemP.name : '', cat: itemP ? '' : (catP ? catP.name : '') };
     const b = { item: itemB ? itemB.name : '', cat: itemB ? '' : (catB ? catB.name : '') };
     if (inP && !inB) {
-      addPersonalEntry('job', amount, spendNote(sentence, p.item, null), p.item, p.cat);
-      msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().personalOutKind + ' · ' + (p.item || p.cat);
+      addPersonalEntry(kind, amount, spend ? spendNote(sentence, p.item, null) : '', p.item, p.cat);
+      msg.textContent = T().addedTo + amount.toFixed(2) + ' - ' + (spend ? T().personalOutKind : T().personalInKind) + ' · ' + (p.item || p.cat);
       return;
     }
-    if (inB && !inP) { chooseTarget(sentence, amount, 'job', msg, b.item); return; } // a customers' item: which customer?
-    if (inP && inB) { askSection(sentence, amount, msg, p, b); return; }
+    if (inB && !inP) { chooseTarget(sentence, amount, kind, msg, b.item); return; } // a customers' item or category: which customer?
+    if (inP && inB) { askSection(sentence, amount, msg, p, b, kind); return; }
   }
   // Amount heard but not where it goes (or more than one card fits): ask with buttons.
   if (!match) { chooseTarget(sentence, amount, kind, msg, item); return; }
@@ -3987,12 +4110,21 @@ function addBoxByName(name) {
   if (!name) { startMsg.textContent = T().cantHear; return; }
   // "קיבלתי 500 שקל" said on the purple mic is money in, not the name of a new card.
   if (sentenceAction(name) === 'income') { handleHomeText(name, 'income', startMsg); return; }
-  boxes.push({ id: newBoxId(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
+  const id = newBoxId();
+  boxes.push({ id: id, name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
   rememberName(name);
   saveBoxes();
   renderHome();
   renderSummaries();
   startMsg.textContent = T().newCardAdded + name;
+  openCardPage(id); // the new card opens straight away
+}
+// Opens a card's page from wherever we are (the first page, אישי, or ניהול כספים).
+function openCardPage(id) {
+  showStartPage(false);
+  document.getElementById('personalPage').style.display = 'none';
+  document.getElementById('toFront').style.display = 'block';
+  openApp(id);
 }
 document.getElementById('startPurple').onclick = () => {
   if (!dictation && !SR) { openNameDialog('', addBoxByName); return; }

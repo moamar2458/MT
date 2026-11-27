@@ -1027,7 +1027,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 36;
+const APP_VERSION = 37;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -3966,7 +3966,8 @@ function nameForms(w) {
   for (let k = 0; k < 2 && /^[ולבמש]/.test(n) && n.length - 1 >= 2; k++) { n = n.slice(1); forms.push(n); }
   return forms;
 }
-// Returns { c: { b, i }, rest: the sentence without the name }, or null when no card's name is in it.
+// Returns { c: { b, i }, rest: the sentence without the name, prefix: the letters that were in front ("מ", "ל", "ול"...) },
+// or null when no card's name is in it.
 // When two names fit ("דוד" and "דוד כהן"), the fuller one wins.
 function findNamedCard(sentence) {
   const words = itemTokens(sentence); // keeps "3,000" and "12.5" whole
@@ -3979,12 +3980,13 @@ function findNamedCard(sentence) {
       const win = words.slice(st, st + parts.length);
       if (nameForms(win[0]).indexOf(parts[0]) < 0) continue;
       if (!win.slice(1).every((w, j) => normWord(w) === parts[j + 1])) continue;
-      if (!best || parts.length > best.len) best = { c: { b: b, i: i }, at: st, len: parts.length };
+      const said = normWord(win[0]);
+      if (!best || parts.length > best.len) best = { c: { b: b, i: i }, at: st, len: parts.length, prefix: said.slice(0, said.length - parts[0].length) };
     }
   });
   if (!best) return null;
   const rest = words.filter((w, k) => k < best.at || k >= best.at + best.len).join(' ');
-  return { c: best.c, rest: rest };
+  return { c: best.c, rest: rest, prefix: best.prefix };
 }
 // A saved line never shows the card's name (also older lines saved with the whole sentence).
 function withoutCardName(text, b) {
@@ -4041,7 +4043,11 @@ function handleText(sentence) {
     const body = named.rest;
     const amount = findAmount(body);
     if (amount === null) { addToJobDesc(named.c.b, body, heard, other ? boxLabel(named.c.b, named.c.i) : ''); return; }
-    const kind = sentenceAction(body) || 'job';
+    // The letter in front of the name decides: "מיפית" (from) = money in, "ליפית" (to) = job spending.
+    // "קיבלתי" still always means money in; with no letter, as before (job spending unless the sentence says otherwise).
+    const fromTo = /מ$/.test(named.prefix) ? 'income' : (/ל$/.test(named.prefix) ? 'job' : '');
+    const action = sentenceAction(body);
+    const kind = action === 'income' ? 'income' : (fromTo || action || 'job');
     const lines = splitItems(body) || [{ text: body, amount: amount }];
     heard.textContent = addedText(kind, addLinesToCard(named.c, kind, lines), other ? boxLabel(named.c.b, named.c.i) : '');
     return;

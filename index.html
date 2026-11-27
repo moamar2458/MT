@@ -578,7 +578,22 @@ body.pctOff .tenBar { display: none !important; }
 .vatBar h3 { margin: 0; font-size: 13px; color: var(--blueText); text-align: start; }
 .vatBar .amount { font-family: var(--num); font-size: 24px; font-weight: 700; color: var(--blueText); direction: ltr; white-space: nowrap; }
 /* מס הכנסה, under סיכום העבודה */
-.panel.closed #taxArea { display: none; }
+.panel.closed #taxArea, .panel.closed #bizAddForm { display: none !important; }
+/* עסק line: mic on the right, + on the left (in Hebrew), the title in the middle */
+.bizHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panelTitle.bizHead::after { content: none; }
+.bizHeadTitle { flex: 1; text-align: center; }
+.bizHeadTitle::after { content: ' \25B4'; }
+.panel.closed .bizHeadTitle::after { content: ' \25BE'; }
+.bizHeadBtn { flex: 0 0 auto; width: 34px; height: 34px; padding: 0; border: none; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; font-weight: 700; line-height: 1; }
+.bizMic { background: var(--blue); color: #fff; font-size: 17px; }
+.bizMic.listening { box-shadow: 0 0 0 6px rgba(37,99,235,0.3); animation: micPulse 1.4s ease-in-out infinite; }
+.bizAdd { background: var(--red); color: #1A0B0A; }
+.bizMsg { text-align: center; margin: 4px 0; }
+.bizMsg:empty { display: none; }
+.bizAddForm { margin: 8px 0; background: var(--bg); border-radius: 14px; padding: 6px; }
+.taxProfitLine { border-top: 1px dashed var(--line); padding-top: 6px; font-weight: 700; color: var(--text); }
+.taxVatNote { font-size: 11px; color: var(--muted); text-align: start; }
 #businessBox .taxBox { background: var(--surface); }
 #businessBox .taxArea { margin-top: 12px; }
 .taxArea { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
@@ -802,13 +817,29 @@ html[dir=rtl] #editAmount { text-align: end; }
 <!-- Business (עסק): under "סיכום העבודה", in blue so the two lines look different -->
 <div id="businessRow">
   <div class="summaryBox panel closed" id="businessBox">
-    <h2 class="sideTitle businessColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
+    <h2 class="sideTitle businessColor panelTitle bizHead" onclick="togglePanel('business')">
+      <button class="bizHeadBtn bizMic" id="bizMicBtn" type="button" onclick="event.stopPropagation(); listenBusiness()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button>
+      <span class="bizHeadTitle" data-t="businessTitle"></span>
+      <button class="bizHeadBtn bizAdd" id="bizAddBtn" type="button" onclick="event.stopPropagation(); openBizAdd()">+</button>
+    </h2>
+    <div class="nameMicMsg bizMsg" id="bizMsg"></div>
+    <!-- A new business expense: what it was and the amount -->
+    <div class="inlineForm bizAddForm" id="bizAddForm" style="display:none">
+      <input type="text" id="bizAddNote" class="inlineNote" maxlength="80" autocomplete="off" list="itemSuggest">
+      <span class="inlineAmountWrap"><span class="inlineSign personal">-</span><input type="text" id="bizAddAmount" class="inlineAmount personal" inputmode="decimal" autocomplete="off"></span>
+      <button class="inlineOk" type="button" onclick="saveBizAdd()">&#10003;</button>
+      <button class="inlineCancel" type="button" onclick="closeBizAdd()">&#10005;</button>
+    </div>
     <div class="summaryList" id="businessList"></div>
     <!-- מס הכנסה for this month: its own box in עסק, from the profit (income minus job spending) -->
     <div class="taxArea" id="taxArea">
       <div class="taxBox">
         <div class="taxHead"><span data-t="incomeTaxTitle"></span><span class="taxMonth" id="taxMonth"></span></div>
-        <div class="taxLine"><span data-t="taxProfit"></span><bdi dir="ltr" id="taxProfit"></bdi></div>
+        <div class="taxLine"><span data-t="taxIncomeLbl"></span><bdi dir="ltr" id="taxIncome"></bdi></div>
+        <div class="taxLine"><span data-t="taxJobLbl"></span><bdi dir="ltr" id="taxJob"></bdi></div>
+        <div class="taxLine"><span data-t="taxBizLbl"></span><bdi dir="ltr" id="taxBiz"></bdi></div>
+        <div class="taxLine taxProfitLine"><span data-t="taxProfit"></span><bdi dir="ltr" id="taxProfit"></bdi></div>
+        <div class="taxVatNote" id="taxVatNote"></div>
         <div class="taxLine"><span data-t="taxBefore"></span><bdi dir="ltr" id="taxBefore"></bdi></div>
         <div class="taxLine taxPoints">
           <label><span data-t="creditPoints"></span> <input type="text" inputmode="decimal" id="taxPointsBox" autocomplete="off" oninput="setTaxPoints(this.value)"></label>
@@ -971,7 +1002,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 32;
+const APP_VERSION = 33;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -1401,7 +1432,15 @@ const TEXT = {
     vatCardLabel: 'מע"מ 18% (כלול בכסף שנכנס)',
     vatMonthLabel: 'מע"מ 18% החודש (כלול בהכנסות)',
     incomeTaxTitle: 'מס הכנסה',
-    taxProfit: 'רווח החודש (הכנסה פחות הוצאות עבודה)',
+    taxProfit: 'רווח החודש',
+    taxIncomeLbl: 'הכנסות החודש',
+    taxJobLbl: 'הוצאות עבודה',
+    taxBizLbl: 'הוצאות העסק',
+    taxNetMurshe: 'עוסק מורשה: כל הסכומים בלי מע"מ (חלקי 1.18)',
+    taxNetPatur: 'עוסק פטור: הסכומים כמו שהם (כולל מע"מ)',
+    addBizSpend: 'הוספת הוצאה של העסק',
+    sayBizSpend: 'אמרו הוצאה של העסק, למשל "200 דלק"',
+    bizTypeAmount: 'לא שמעתי סכום. הקלידו את הסכום בתיבה.',
     taxBefore: 'מס לפי המדרגות',
     creditPoints: 'נקודות זיכוי',
     taxToPay: 'מס הכנסה לתשלום',
@@ -1607,7 +1646,15 @@ const TEXT = {
     vatCardLabel: 'VAT 18% (included in money in)',
     vatMonthLabel: 'VAT 18% this month (included in income)',
     incomeTaxTitle: 'Income tax',
-    taxProfit: 'Profit this month (income minus job spending)',
+    taxProfit: 'Profit this month',
+    taxIncomeLbl: 'Income this month',
+    taxJobLbl: 'Job spending',
+    taxBizLbl: 'Business spending',
+    taxNetMurshe: 'Licensed dealer: all amounts without VAT (divided by 1.18)',
+    taxNetPatur: 'Exempt dealer: amounts as they are (VAT included)',
+    addBizSpend: 'Add a business expense',
+    sayBizSpend: 'Say a business expense, for example "200 fuel"',
+    bizTypeAmount: 'I did not hear an amount. Type it in the box.',
     taxBefore: 'Tax by the brackets',
     creditPoints: 'Credit points',
     taxToPay: 'Income tax to pay',
@@ -1709,6 +1756,10 @@ function applyLang() {
   document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('cardsGear').title = t.settingsBtn;
   document.getElementById('jobAddBtn').title = t.addJobSpend;
+  document.getElementById('bizAddBtn').title = t.addBizSpend;
+  document.getElementById('bizAddBtn').setAttribute('aria-label', t.addBizSpend);
+  document.getElementById('bizMicBtn').title = t.sayBizSpend;
+  document.getElementById('bizMicBtn').setAttribute('aria-label', t.sayBizSpend);
   document.getElementById('jobAddBtn').setAttribute('aria-label', t.addJobSpend);
   document.getElementById('perGear').title = t.settingsBtn;
   document.getElementById('perGear').setAttribute('aria-label', t.settingsBtn);
@@ -1830,6 +1881,61 @@ function loadBusiness() {
   try { const l = JSON.parse(LS.getItem('money_business') || '[]'); return Array.isArray(l) ? l.filter(x => x && typeof x.amount === 'number') : []; } catch (e) { return []; }
 }
 function saveBusiness() { LS.setItem('money_business', JSON.stringify(businessSpend)); }
+// ---- עסק line: the mic (say "200 דלק", or several: "200 שקל דלק 50 שקל חניה") and + (type it) ----
+function openBusinessPanel() { if (openPanel !== 'business') { openPanel = 'business'; applyPanels(); } }
+function listenBusiness() {
+  const t = T();
+  const msg = document.getElementById('bizMsg');
+  startVoice(document.getElementById('bizMicBtn'), msg, text => {
+    text = String(text || '').trim();
+    if (!text) { msg.textContent = t.cantHear; return; }
+    const itemOf = s => { const it = findItem(withoutActions(s), 'business'); return it ? it.name : ''; };
+    const many = splitItems(text);
+    openBusinessPanel();
+    if (many) {
+      many.slice().reverse().forEach(sg => { const n = itemOf(sg.text); addBusinessSpend(sg.amount, spendNote(sg.text, n, null), n); });
+      msg.textContent = t.addedMany.replace('{n}', many.length) + many.map(sg => sg.amount.toFixed(2) + ' ' + (itemOf(sg.text) || spendNote(sg.text, '', null))).join(', ');
+      return;
+    }
+    const amount = findAmount(text);
+    // No amount: what was said is the description; the box opens to type the amount.
+    if (amount === null) { openBizAdd(spendNote(text, '', null) || text); msg.textContent = t.bizTypeAmount; return; }
+    const n = itemOf(text);
+    const note = spendNote(text, n, null);
+    addBusinessSpend(amount, note, n);
+    msg.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (n || note ? ' · ' + (n || note) : '');
+  });
+}
+function openBizAdd(prefill) {
+  const t = T();
+  openBusinessPanel();
+  const note = document.getElementById('bizAddNote');
+  const amount = document.getElementById('bizAddAmount');
+  document.getElementById('bizAddForm').style.display = '';
+  note.value = prefill || '';
+  amount.value = '';
+  amount.classList.remove('bad');
+  note.placeholder = t.editText;
+  amount.placeholder = t.colAmount;
+  fillItemSuggest('business');
+  (prefill ? amount : note).focus();
+}
+function closeBizAdd() { document.getElementById('bizAddForm').style.display = 'none'; }
+function saveBizAdd() {
+  const t = T();
+  const amountEl = document.getElementById('bizAddAmount');
+  const amount = findAmount(amountEl.value);
+  if (amount === null || amount <= 0) { amountEl.classList.add('bad'); amountEl.focus(); return; }
+  const text = document.getElementById('bizAddNote').value.trim();
+  const it = text ? itemInList('business', text) : null;
+  addBusinessSpend(amount, it ? it.name : text, it ? it.name : '');
+  document.getElementById('bizMsg').textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (text ? ' · ' + text : '');
+  closeBizAdd();
+}
+['bizAddNote', 'bizAddAmount'].forEach(id => document.getElementById(id).addEventListener('keydown', ev => {
+  if (ev.key === 'Enter') { ev.preventDefault(); if (id === 'bizAddNote') document.getElementById('bizAddAmount').focus(); else saveBizAdd(); }
+  if (ev.key === 'Escape') closeBizAdd();
+}));
 function addBusinessSpend(amount, note, item, cat) {
   const now = new Date();
   const entry = { id: 'z' + Date.now(), amount: amount, note: note, date: now.toLocaleDateString(), day: dayKey(now) };
@@ -1838,6 +1944,7 @@ function addBusinessSpend(amount, note, item, cat) {
   businessSpend.unshift(entry);
   saveBusiness();
   renderBusiness();
+  renderTax(false);
 }
 function addPersonalEntry(kind, amount, note, item, cat) {
   const now = new Date();
@@ -2830,6 +2937,7 @@ function renderBusiness() {
     row.append(text, tools);
     box.appendChild(row);
   });
+  if (document.getElementById('taxPay')) renderTax(false);
   const left = document.createElement('div');
   left.className = 'periodRow totalRow bizTotal';
   left.append(cell(t.colLeft, 'period'), cell((tLeft - tSpend).toFixed(2)));
@@ -2859,13 +2967,20 @@ function renderTax(fillPoints) {
   const t = T();
   const now = new Date();
   const key = periodKey(now, 'month');
-  let income = 0, job = 0;
+  let income = 0, job = 0, biz = 0;
+  const thisMonth = e => { const d = entryDate(e); return d && periodKey(d, 'month') === key; };
   boxes.forEach(b => (b.entries || []).forEach(e => {
-    const d = entryDate(e);
-    if (!d || periodKey(d, 'month') !== key) return;
+    if (!thisMonth(e)) return;
     if (e.kind === 'income') income += e.amount; else if (e.kind === 'job') job += e.amount;
   }));
-  const profit = income - job;
+  businessSpend.forEach(x => { if (thisMonth(x)) biz += x.amount; });
+  // עוסק פטור: the amounts as they are (VAT included). עוסק מורשה: everything without VAT (amount / 1.18).
+  const net = v => vatOn() ? v / (1 + VAT_RATE) : v;
+  const profit = net(income) - net(job) - net(biz);
+  document.getElementById('taxIncome').textContent = net(income).toFixed(2);
+  document.getElementById('taxJob').textContent = '-' + net(job).toFixed(2);
+  document.getElementById('taxBiz').textContent = '-' + net(biz).toFixed(2);
+  document.getElementById('taxVatNote').textContent = vatOn() ? t.taxNetMurshe : t.taxNetPatur;
   const before = incomeTax(Math.max(0, profit));
   const points = taxPoints();
   const credit = points * CREDIT_POINT_VALUE;
@@ -4097,6 +4212,8 @@ function resetPageState() {
   document.getElementById('itemsOverlay').classList.remove('show');
   document.getElementById('itemInput').value = '';
   closeTemplate();
+  closeBizAdd();
+  document.getElementById('bizMsg').textContent = '';
   closeEntryEditor();
   closeInlineEdits();
   document.getElementById('perMsg').textContent = '';

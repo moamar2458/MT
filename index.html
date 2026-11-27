@@ -529,6 +529,15 @@ body.compactBoxes .tile .name { margin-top: 8px; }
 .jobToggle { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; background: none; border: none; padding: 12px 14px; color: var(--redText); font-family: var(--num); font-size: 15px; font-weight: 700; cursor: pointer; text-align: start; }
 .jobToggleTitle::after { content: ' \25B4'; }
 .jobSection.closed .jobToggleTitle::after { content: ' \25BE'; }
+.jobToggle { user-select: none; }
+.jobToggleSum { margin-inline-start: auto; }
+.jobAdd { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; margin-inline-start: 8px; border: none; border-radius: 9px; background: var(--red); color: #1A0B0A; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; }
+.jobSection.closed .jobAdd { display: none; }
+.jobAddForm { margin-bottom: 8px; background: var(--bg); border-radius: 14px; padding: 6px; }
+.typeArea { flex: 1 1 auto; max-width: 440px; }
+.jobDesc { display: block; width: 100%; min-height: 60px; resize: vertical; padding: 10px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-family: inherit; font-size: 15px; line-height: 1.4; box-sizing: border-box; }
+.jobDesc:focus { outline: none; border-color: var(--violet); }
+.jobDesc::placeholder { color: var(--muted); }
 .jobToggleSum { font-family: var(--num); font-size: 22px; font-weight: 700; direction: ltr; color: var(--redText); }
 .jobSection.closed .jobBody { display: none; }
 .jobBody { padding: 0 12px 12px; }
@@ -840,10 +849,8 @@ html[dir=rtl] #editAmount { text-align: end; }
     <div class="top">
       <button class="bigMic" id="micBtn" aria-label="מיקרופון" onclick="listen()"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button>
       <div class="typeArea">
-        <div class="typeRow">
-          <input type="text" id="typed" inputmode="decimal" data-p="typePlaceholder">
-          <button class="arrowJob" id="arrowJob" onclick="addArrow('job')"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="stroke-width:2.4"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg></button>
-        </div>
+        <!-- What this job is; saved with the card -->
+        <textarea id="jobDesc" class="jobDesc" rows="2" maxlength="300" data-p="jobDescPh" oninput="saveJobDesc(this.value)"></textarea>
       </div>
     </div>
     <div class="heard" id="heard"></div>
@@ -861,8 +868,15 @@ html[dir=rtl] #editAmount { text-align: end; }
       <ul id="listIncome" class="entryList collapsed"></ul><!-- closed until the total above is tapped -->
       <!-- Job spending: closed, only its title. A click opens its total and list; another click closes it. -->
       <div class="jobSection closed" id="jobSection">
-        <button class="jobToggle" id="jobToggle" type="button" onclick="toggleJobSection()" aria-expanded="false"><span class="jobToggleTitle" data-t="jobSpending"></span><span class="jobToggleSum" id="tJob">0.00</span></button>
+        <div class="jobToggle" id="jobToggle" role="button" tabindex="0" aria-expanded="false" onclick="if (!event.target.closest('.jobAdd')) toggleJobSection()" onkeydown="if ((event.key === 'Enter' || event.key === ' ') && event.target === this) { event.preventDefault(); toggleJobSection(); }"><span class="jobToggleTitle" data-t="jobSpending"></span><button class="jobAdd" id="jobAddBtn" type="button" onclick="openJobAdd()">+</button><span class="jobToggleSum" id="tJob">0.00</span></div>
         <div class="jobBody">
+          <!-- A new job expense: its description and amount -->
+          <div class="inlineForm jobAddForm" id="jobAddForm" style="display:none">
+            <input type="text" id="jobAddNote" class="inlineNote" maxlength="80" autocomplete="off">
+            <span class="inlineAmountWrap"><span class="inlineSign personal">-</span><input type="text" id="jobAddAmount" class="inlineAmount personal" inputmode="decimal" autocomplete="off"></span>
+            <button class="inlineOk" id="jobAddOk" type="button" onclick="saveJobAdd()">&#10003;</button>
+            <button class="inlineCancel" id="jobAddCancel" type="button" onclick="closeJobAdd()">&#10005;</button>
+          </div>
           <div class="listTitle" data-t="jobList"></div>
           <ul id="listJob" class="entryList"></ul>
         </div>
@@ -1280,6 +1294,8 @@ const TEXT = {
     saveBtn: 'שמירה',
     amountBad: 'הקלידו סכום תקין.',
     customersLabel: 'לקוחות',
+    addJobSpend: 'הוספת הוצאת עבודה',
+    jobDescPh: 'תיאור העבודה, למשל: צביעת דירה 3 חדרים',
     addItemBtn: 'הוספת פריט',
     addItemTitle: 'הוספת פריט',
     addItemAsk: '"{x}" לא נמצא ברשימת הפריטים. להוסיף אותו לרשימה?',
@@ -1457,6 +1473,8 @@ const TEXT = {
     saveBtn: 'Save',
     amountBad: 'Type a valid amount.',
     customersLabel: 'Customers',
+    addJobSpend: 'Add a job expense',
+    jobDescPh: 'What the job is, for example: painting a 3-room flat',
     addItemBtn: 'Add an item',
     addItemTitle: 'Add an item',
     addItemAsk: '"{x}" is not in the items list. Add it to the list?',
@@ -1501,7 +1519,7 @@ function loadBoxes() {
     try { oldEntries = JSON.parse(LS.getItem('money_entries_v2') || '[]'); } catch (e) { oldEntries = []; }
     const oldPct = parseFloat(LS.getItem('money_pct'));
     boxes = [{
-      id: 'b' + Date.now(),
+      id: newBoxId(),
       name: LS.getItem('money_app_name') || '',
       entries: oldEntries,
       pct: isNaN(oldPct) ? 10 : oldPct,
@@ -1537,13 +1555,14 @@ function applyLang() {
   document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t[el.getAttribute('data-t')]; });
   document.querySelectorAll('[data-p]').forEach(el => { el.placeholder = t[el.getAttribute('data-p')]; });
   document.getElementById('langBtn').textContent = t.button;
-  document.getElementById('arrowJob').title = t.jobSpending;
   document.getElementById('titleEdit').title = t.rename;
   document.getElementById('toFront').title = t.back;
   document.getElementById('toFront').setAttribute('aria-label', t.back);
   document.getElementById('settingsBtn').title = t.settingsBtn;
   document.getElementById('settingsBtn').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('cardsGear').title = t.settingsBtn;
+  document.getElementById('jobAddBtn').title = t.addJobSpend;
+  document.getElementById('jobAddBtn').setAttribute('aria-label', t.addJobSpend);
   document.getElementById('perGear').title = t.settingsBtn;
   document.getElementById('perGear').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('cardsGear').setAttribute('aria-label', t.settingsBtn);
@@ -3102,9 +3121,11 @@ document.getElementById('nameInput').addEventListener('keydown', e => {
   if (e.key === 'Escape') closeNameDialog(null);
 });
 
+// A card id that is never shared, even when two cards are made in the same moment.
+function newBoxId() { return 'b' + Date.now() + Math.random().toString(36).slice(2, 6); }
 function addBox() {
   openNameDialog('', name => {
-    const id = 'b' + Date.now();
+    const id = newBoxId();
     boxes.push({ id: id, name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
     saveBoxes();
     renderHome();
@@ -3433,17 +3454,12 @@ async function addIncome() {
   heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.income;
 }
 
-// Typing a number and pressing the red arrow adds it to job spending.
-function addArrow(kind) {
-  const box = document.getElementById('typed');
-  kind = sentenceAction(box.value) || kind; // typed "קיבלתי 500 שקל" is money in
-  const amount = findAmount(box.value);
-  if (amount === null) { heard.textContent = T().typeFirst; return; }
-  const typedItem = kind === 'job' ? findItem(box.value, 'business') : null;
-  addEntry(kind, amount, cardNote(kind, box.value, typedItem ? typedItem.name : '', null), typedItem ? typedItem.name : '');
-  heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds[kind];
-  box.value = '';
-  box.focus();
+// The description of the job, written next to the microphone. Saved with the card as "desc".
+function saveJobDesc(text) {
+  const b = cur();
+  if (!b) return;
+  b.desc = String(text || '');
+  saveBoxes();
 }
 
 // ---- Backup by email, and restore (for the open box) ----
@@ -3645,10 +3661,44 @@ function toggleIncomeList(open) {
   card.classList.toggle('open', willOpen);
   card.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
 }
+// "+" next to "הוצאות עבודה": a small box to type a new job expense (description and amount).
+function openJobAdd() {
+  toggleJobSection(true);
+  const t = T();
+  const f = document.getElementById('jobAddForm');
+  f.style.display = '';
+  document.getElementById('jobAddNote').value = '';
+  document.getElementById('jobAddAmount').value = '';
+  document.getElementById('jobAddAmount').classList.remove('bad');
+  document.getElementById('jobAddNote').placeholder = t.editText;
+  document.getElementById('jobAddAmount').placeholder = t.colAmount;
+  fillItemSuggest('business');
+  document.getElementById('jobAddNote').setAttribute('list', 'itemSuggest');
+  document.getElementById('jobAddNote').focus();
+}
+function closeJobAdd() { document.getElementById('jobAddForm').style.display = 'none'; }
+function saveJobAdd() {
+  if (!cur()) return;
+  const amountEl = document.getElementById('jobAddAmount');
+  const amount = findAmount(amountEl.value);
+  if (amount === null || amount <= 0) { amountEl.classList.add('bad'); amountEl.focus(); return; }
+  const note = document.getElementById('jobAddNote').value.trim();
+  const item = note ? itemInList('business', note) : null; // a description that is an item of the list keeps it as the item
+  addEntry('job', amount, item ? item.name : note, item ? item.name : '');
+  heard.textContent = T().addedTo + amount.toFixed(2) + ' - ' + T().kinds.job + (note ? ' · ' + note : '');
+  closeJobAdd();
+  renderHome();
+  renderSummaries();
+}
+['jobAddNote', 'jobAddAmount'].forEach(id => document.getElementById(id).addEventListener('keydown', ev => {
+  if (ev.key === 'Enter') { ev.preventDefault(); if (id === 'jobAddNote') document.getElementById('jobAddAmount').focus(); else saveJobAdd(); }
+  if (ev.key === 'Escape') closeJobAdd();
+}));
 function toggleJobSection(open) {
   const sec = document.getElementById('jobSection');
   const willOpen = open === undefined ? sec.classList.contains('closed') : open;
   sec.classList.toggle('closed', !willOpen);
+  if (!willOpen) closeJobAdd();
   document.getElementById('jobToggle').setAttribute('aria-expanded', willOpen ? 'true' : 'false');
 }
 // Leaving a page: close everything that was opened on it (panels, folded lists, menus, windows, the mic),
@@ -3680,7 +3730,7 @@ function resetPageState() {
   document.getElementById('fileMsg').textContent = '';
   document.getElementById('homeMicMsg').textContent = '';
   // Inside a card: the typed number, the last message, and "הוצאות עבודה" closed again
-  document.getElementById('typed').value = '';
+  closeJobAdd();
   toggleJobSection(false);
   toggleIncomeList(false);
   heard.textContent = '';
@@ -3698,6 +3748,7 @@ function openApp(id) {
   document.getElementById('home').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('pctBox').value = cur().pct;
+  document.getElementById('jobDesc').value = cur().desc || '';
   heard.textContent = ''; // no hint text; only what was added shows here
   showName();
   render();
@@ -3936,7 +3987,7 @@ function addBoxByName(name) {
   if (!name) { startMsg.textContent = T().cantHear; return; }
   // "קיבלתי 500 שקל" said on the purple mic is money in, not the name of a new card.
   if (sentenceAction(name) === 'income') { handleHomeText(name, 'income', startMsg); return; }
-  boxes.push({ id: 'b' + Date.now(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
+  boxes.push({ id: newBoxId(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() });
   rememberName(name);
   saveBoxes();
   renderHome();

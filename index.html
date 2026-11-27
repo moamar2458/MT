@@ -571,6 +571,26 @@ html[dir=ltr] .jobBody .total { text-align: start; }
 .perTotal.perTotalOne { grid-template-columns: 1fr; }
 
 .catTools { display: flex; gap: 6px; flex-shrink: 0; }
+/* עוסק פטור: no VAT boxes. The personal % box can be turned off. */
+body:not(.vatOn) .vatOnly { display: none !important; }
+body.pctOff .tenBar { display: none !important; }
+.vatBar { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; margin: 8px 0 4px; background: var(--blueBg); border: 1px solid var(--blueLine); }
+.vatBar h3 { margin: 0; font-size: 13px; color: var(--blueText); text-align: start; }
+.vatBar .amount { font-family: var(--num); font-size: 24px; font-weight: 700; color: var(--blueText); direction: ltr; white-space: nowrap; }
+/* מס הכנסה, under סיכום העבודה */
+.panel.closed #taxArea { display: none; }
+.taxArea { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.taxBox { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.taxHead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; color: var(--text); }
+.taxMonth { font-size: 12px; font-weight: 500; color: var(--muted); }
+.taxLine { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--soft); }
+.taxLine bdi { font-family: var(--num); font-size: 15px; color: var(--text); white-space: nowrap; }
+.taxPoints label { display: flex; align-items: center; gap: 6px; }
+.taxPoints input { width: 64px; height: 32px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-family: var(--num); font-size: 15px; text-align: center; }
+.taxTotal { border-top: 1px solid var(--line); padding-top: 6px; font-weight: 700; color: var(--text); }
+.taxTotal bdi { font-size: 18px; color: var(--redText); }
+.vatOnly.taxBox .taxTotal { border-top: none; padding-top: 0; }
+.vatOnly.taxBox .taxTotal bdi { color: var(--blueText); }
 /* The version, big enough to read, at the bottom */
 .versionTag { font-family: var(--num); font-size: 18px; font-weight: 700; color: var(--muted); text-align: center; padding: 14px 0 18px; letter-spacing: 0.5px; }
 #middleArea + #fileBar + .versionTag { margin-top: auto; }
@@ -694,6 +714,16 @@ html[dir=rtl] #editAmount { text-align: end; }
       <input type="checkbox" id="lightThemeSwitch" role="switch" onchange="setTheme(this.checked ? 'light' : 'dark')">
       <span class="switchTrack" aria-hidden="true"></span>
     </label>
+    <label class="switchRow">
+      <span class="switchText"><span class="switchLabel" data-t="vatSwitch"></span><span class="switchNote" data-t="vatSwitchNote"></span></span>
+      <input type="checkbox" id="vatSwitch" role="switch" onchange="setVatMode(this.checked)">
+      <span class="switchTrack" aria-hidden="true"></span>
+    </label>
+    <label class="switchRow">
+      <span class="switchText"><span class="switchLabel" data-t="pctSwitch"></span><span class="switchNote" data-t="pctSwitchNote"></span></span>
+      <input type="checkbox" id="pctSwitch" role="switch" onchange="setPctShown(this.checked)">
+      <span class="switchTrack" aria-hidden="true"></span>
+    </label>
     <!-- Shown when Settings is opened from ניהול כספים -->
     <div class="settingsTools" id="settingsTools">
       <button class="fileBtn itemsOpenBtn" onclick="const sc = settingsScope; closeSettings(); openItems(sc)" data-t="itemsBtn"></button>
@@ -759,8 +789,25 @@ html[dir=rtl] #editAmount { text-align: end; }
       <button id="jobWeekBtn" class="viewTab active" onclick="setJobView('week')" data-t="weekly"></button>
       <button id="jobMonthBtn" class="viewTab" onclick="setJobView('month')" data-t="monthly"></button>
       <button id="jobNameBtn" class="viewTab" onclick="setJobView('name')" data-t="byName"></button>
+      <button id="jobCatBtn" class="viewTab" onclick="setJobView('category')" data-t="byCategory"></button>
     </div>
     <div class="summaryList" id="jobSummaryList"></div>
+    <!-- Income tax for this month, from the profit (income minus job spending) -->
+    <div class="taxArea" id="taxArea">
+      <div class="taxBox">
+        <div class="taxHead"><span data-t="incomeTaxTitle"></span><span class="taxMonth" id="taxMonth"></span></div>
+        <div class="taxLine"><span data-t="taxProfit"></span><bdi dir="ltr" id="taxProfit"></bdi></div>
+        <div class="taxLine"><span data-t="taxBefore"></span><bdi dir="ltr" id="taxBefore"></bdi></div>
+        <div class="taxLine taxPoints">
+          <label><span data-t="creditPoints"></span> <input type="text" inputmode="decimal" id="taxPointsBox" autocomplete="off" oninput="setTaxPoints(this.value)"></label>
+          <bdi dir="ltr" id="taxCredit"></bdi>
+        </div>
+        <div class="taxLine taxTotal"><span data-t="taxToPay"></span><bdi dir="ltr" id="taxPay"></bdi></div>
+      </div>
+      <div class="taxBox vatOnly">
+        <div class="taxLine taxTotal"><span data-t="vatMonthLabel"></span><bdi dir="ltr" id="vatMonth"></bdi></div>
+      </div>
+    </div>
   </div>
 </div>
 <!-- Business (עסק): under "סיכום העבודה", in blue so the two lines look different -->
@@ -891,6 +938,11 @@ html[dir=rtl] #editAmount { text-align: end; }
         <h3><input type="number" id="pctBox" min="0" max="100" step="any" value="10" onchange="changePct()" oninput="changePct()">% <span data-t="pctLabel"></span></h3>
         <div class="amount" id="tTen">0.00</div>
       </div>
+      <!-- עוסק מורשה only: the VAT in this card's money in -->
+      <div class="card vatBar vatOnly">
+        <h3 data-t="vatCardLabel"></h3>
+        <div class="amount" id="tVat">0.00</div>
+      </div>
     </div>
 
     <div class="belowRow">
@@ -913,9 +965,9 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 29;
+const APP_VERSION = 30;
 const LS_MEM = {};
-const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p'];
+const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
 let cloud = null;                        // database references, or null when there is no database
 const written = { meta: null, boxes: {}, personal: null }; // what the database holds (as JSON text)
@@ -1302,6 +1354,22 @@ const TEXT = {
     amountBad: 'הקלידו סכום תקין.',
     customersLabel: 'לקוחות',
     versionLabel: 'גרסה',
+    vatSwitch: 'עוסק מורשה',
+    vatSwitchNote: 'מציג תיבת מע"מ 18%. כבוי = עוסק פטור',
+    pctSwitch: 'תיבת האחוז האישי',
+    pctSwitchNote: 'התיבה עם ה-% בכרטיס לקוח',
+    vatCardLabel: 'מע"מ 18% (כלול בכסף שנכנס)',
+    vatMonthLabel: 'מע"מ 18% החודש (כלול בהכנסות)',
+    incomeTaxTitle: 'מס הכנסה',
+    taxProfit: 'רווח החודש (הכנסה פחות הוצאות עבודה)',
+    taxBefore: 'מס לפי המדרגות',
+    creditPoints: 'נקודות זיכוי',
+    taxToPay: 'מס הכנסה לתשלום',
+    descAsk: (newText, oldText) => 'כבר יש תיאור עבודה:\n"' + oldText + '"\nשמעתי: "' + newText + '"\nלהוסיף לתיאור או להחליף אותו?',
+    descAddBtn: 'עריכה - הוספה לתיאור',
+    descSayHint: 'אפשר גם לומר "תוסיף" או "תחליף".',
+    cardSayHint: 'אפשר גם לומר את שם הלקוח.',
+    descReplaceBtn: 'החלפת התיאור',
     descAdded: 'נוסף לתיאור העבודה',
     pickDescCard: heardText => 'שמעתי: "' + heardText + '"\nבלי סכום, אז זה תיאור עבודה. לאיזה כרטיס?',
     addJobSpend: 'הוספת הוצאת עבודה',
@@ -1486,6 +1554,22 @@ const TEXT = {
     amountBad: 'Type a valid amount.',
     customersLabel: 'Customers',
     versionLabel: 'Version',
+    vatSwitch: 'Licensed dealer (עוסק מורשה)',
+    vatSwitchNote: 'Shows an 18% VAT box. Off = exempt dealer (עוסק פטור)',
+    pctSwitch: 'Personal percentage box',
+    pctSwitchNote: 'The % box in a customer card',
+    vatCardLabel: 'VAT 18% (included in money in)',
+    vatMonthLabel: 'VAT 18% this month (included in income)',
+    incomeTaxTitle: 'Income tax',
+    taxProfit: 'Profit this month (income minus job spending)',
+    taxBefore: 'Tax by the brackets',
+    creditPoints: 'Credit points',
+    taxToPay: 'Income tax to pay',
+    descAsk: (newText, oldText) => 'There is already a job description:\n"' + oldText + '"\nI heard: "' + newText + '"\nAdd to it or replace it?',
+    descAddBtn: 'Edit - add to it',
+    descSayHint: 'You can also say "add" or "replace".',
+    cardSayHint: 'You can also say the customer\'s name.',
+    descReplaceBtn: 'Replace it',
     descAdded: 'Added to the job description',
     pickDescCard: heardText => 'I heard: "' + heardText + '"\nNo amount, so it is a job description. For which card?',
     addJobSpend: 'Add a job expense',
@@ -1585,6 +1669,7 @@ function applyLang() {
   document.getElementById('cardsGear').setAttribute('aria-label', t.settingsBtn);
   document.getElementById('hideHintsSwitch').checked = hintsHidden();
   applyTheme();
+  applyBusinessSettings();
   const startMsgEl = document.getElementById('startMsg');
   if (isHintText(startMsgEl.textContent)) startMsgEl.textContent = hint('startHint');
   heard.textContent = '';
@@ -1602,7 +1687,7 @@ function toggleLang() {
 
 // ---- Settings: hide the instruction texts (the ones that tell you what to say) ----
 // Saved as money_hide_hints ('1' = hidden), with the other settings, so it stays after a reload.
-const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint', 'pickSayHint'];
+const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint', 'pickSayHint', 'descSayHint', 'cardSayHint'];
 function hintsHidden() { return LS.getItem('money_hide_hints') === '1'; }
 // An instruction text, or nothing when instructions are hidden.
 function hint(key) { return hintsHidden() ? '' : T()[key]; }
@@ -1635,6 +1720,21 @@ function setTheme(theme) {
   LS.setItem('money_theme', theme === 'light' ? 'light' : 'dark');
   applyTheme();
 }
+// ---- Settings: עוסק פטור / עוסק מורשה (VAT boxes) and the personal % box ----
+const VAT_RATE = 0.18;
+function vatOn() { return LS.getItem('money_vat') === 'murshe'; }          // עוסק מורשה
+function pctShown() { return LS.getItem('money_show_pct') !== '0'; }       // the personal % box (on unless turned off)
+function setVatMode(murshe) { LS.setItem('money_vat', murshe ? 'murshe' : 'patur'); applyBusinessSettings(); }
+function setPctShown(on) { LS.setItem('money_show_pct', on ? '1' : '0'); applyBusinessSettings(); }
+function applyBusinessSettings() {
+  document.body.classList.toggle('vatOn', vatOn());
+  document.body.classList.toggle('pctOff', !pctShown());
+  document.getElementById('vatSwitch').checked = vatOn();
+  document.getElementById('pctSwitch').checked = pctShown();
+  if (booted) { renderSummaries(); if (currentId) render(); }
+}
+// The VAT inside money received (amounts are recorded as received, VAT included): amount × 18 / 118.
+function vatOf(income) { return income * VAT_RATE / (1 + VAT_RATE); }
 // scope: opened from ניהול כספים ('business', the customers' items) or from אישי ('personal'):
 // then "פריטים וקטגוריות" of that page and "גיבוי" are shown too. From the first page: only the switches.
 let settingsScope = null;
@@ -2689,13 +2789,69 @@ function renderBusiness() {
   left.append(cell(t.colLeft, 'period'), cell((tLeft - tSpend).toFixed(2)));
   box.appendChild(left);
 }
+// ---- מס הכנסה (2026): monthly brackets, each rate only on the part inside its bracket ----
+const TAX_BRACKETS_2026 = [[7010, 0.10], [10060, 0.14], [19000, 0.20], [25100, 0.31], [46690, 0.35], [Infinity, 0.47]];
+const CREDIT_POINT_VALUE = 242; // ₪ per credit point per month
+function incomeTax(profit) {
+  let tax = 0, below = 0;
+  for (const [top, rate] of TAX_BRACKETS_2026) {
+    if (profit <= below) break;
+    tax += (Math.min(profit, top) - below) * rate;
+    below = top;
+  }
+  return tax;
+}
+function taxPoints() { const v = parseFloat(LS.getItem('money_tax_points')); return isNaN(v) || v < 0 ? 2.25 : v; }
+function setTaxPoints(text) {
+  const v = parseFloat(String(text).replace(',', '.'));
+  if (isNaN(v) || v < 0) return;
+  LS.setItem('money_tax_points', String(v));
+  renderTax(false);
+}
+// This month's profit from every card, the tax on it, minus the credit points (never below 0).
+function renderTax(fillPoints) {
+  const t = T();
+  const now = new Date();
+  const key = periodKey(now, 'month');
+  let income = 0, job = 0;
+  boxes.forEach(b => (b.entries || []).forEach(e => {
+    const d = entryDate(e);
+    if (!d || periodKey(d, 'month') !== key) return;
+    if (e.kind === 'income') income += e.amount; else if (e.kind === 'job') job += e.amount;
+  }));
+  const profit = income - job;
+  const before = incomeTax(Math.max(0, profit));
+  const points = taxPoints();
+  const credit = points * CREDIT_POINT_VALUE;
+  const pay = Math.max(0, before - credit);
+  document.getElementById('taxMonth').textContent = periodLabel(key, 'month');
+  document.getElementById('taxProfit').textContent = profit.toFixed(2);
+  document.getElementById('taxBefore').textContent = before.toFixed(2);
+  document.getElementById('taxCredit').textContent = '-' + credit.toFixed(2);
+  document.getElementById('taxPay').textContent = pay.toFixed(2);
+  document.getElementById('vatMonth').textContent = vatOf(income).toFixed(2);
+  const box = document.getElementById('taxPointsBox');
+  if (fillPoints !== false && document.activeElement !== box) box.value = points;
+  box.setAttribute('aria-label', t.creditPoints);
+}
 function renderSummaries() {
   const t = T();
   renderBusiness();
+  renderTax();
   document.getElementById('jobDayBtn').classList.toggle('active', jobView === 'day');
   document.getElementById('jobWeekBtn').classList.toggle('active', jobView === 'week');
   document.getElementById('jobMonthBtn').classList.toggle('active', jobView === 'month');
   document.getElementById('jobNameBtn').classList.toggle('active', jobView === 'name');
+  document.getElementById('jobCatBtn').classList.toggle('active', jobView === 'category');
+  // By category: the job spending of every card, by category and item (the customers' list).
+  if (jobView === 'category') {
+    const list = document.getElementById('jobSummaryList');
+    list.innerHTML = '';
+    const spent = [];
+    boxes.forEach(b => (b.entries || []).forEach(e => { if (e.kind === 'job') spent.push(e); }));
+    renderCategoryBreakdown(list, spent, 'job', renderSummaries, t.noPeriods, 'business');
+    return;
+  }
   // (the personal spending summary was removed)
 
   // By name: each card on its own line with its totals.
@@ -3277,6 +3433,7 @@ function render() {
   });
   document.getElementById('tIncome').textContent = totals.income.toFixed(2);
   document.getElementById('tTen').textContent = ((totals.income - totals.job) * box.pct / 100).toFixed(2);
+  document.getElementById('tVat').textContent = vatOf(totals.income).toFixed(2);
   document.getElementById('tAfterJob').textContent = (totals.income - totals.job).toFixed(2);
   document.getElementById('tJob').textContent = totals.job.toFixed(2);
 }
@@ -3549,7 +3706,7 @@ function handleText(sentence) {
   const t = T();
   const amount = findAmount(sentence);
   // No amount: what was said is the job's description (added to the box next to the microphone).
-  if (amount === null) { addToJobDesc(cur(), sentence); heard.textContent = t.descAdded + ': "' + sentence + '"'; return; }
+  if (amount === null) { addToJobDesc(cur(), sentence, heard); return; }
   const kind = sentenceAction(sentence) || 'job';
   // Several amounts with "שקל" said at once: each one is its own line in this card.
   const many = splitItems(sentence);
@@ -3586,13 +3743,24 @@ async function addIncome() {
 }
 
 // Adds what was said to a card's job description (on a new line after what is already there).
-function addToJobDesc(b, text) {
+// When the card already has a description, a small window asks: add to it, or replace it (tap or say it).
+function addToJobDesc(b, text, msgEl, where) {
   if (!b) return;
+  const t = T();
   text = String(text || '').trim().replace(/[.]+$/, '');
   if (!text) return;
-  b.desc = b.desc ? b.desc.replace(/\s+$/, '') + '\n' + text : text;
-  saveBoxes();
-  if (currentId === b.id) document.getElementById('jobDesc').value = b.desc;
+  const put = desc => {
+    b.desc = desc;
+    saveBoxes();
+    if (currentId === b.id) document.getElementById('jobDesc').value = b.desc;
+    if (msgEl) msgEl.textContent = t.descAdded + (where ? ' (' + where + ')' : '') + ': "' + text + '"';
+  };
+  if (!String(b.desc || '').trim()) { put(text); return; }
+  const says = re => answer => re.test(String(answer || '').toLowerCase());
+  showPick(t.descAsk(text, b.desc), [
+    { label: t.descAddBtn, cls: 'pickPersonal', match: says(/(הוס[יפ]|תוסיף|להוסיף|הוספה|ער[וי]?כ|עריכה|תערוך|add|edit)/), pick: () => put(b.desc.replace(/\s+$/, '') + '\n' + text) },
+    { label: t.descReplaceBtn, cls: 'pickBusiness', match: says(/(החלפ|תחליף|להחליף|החלף|replace)/), pick: () => put(text) }
+  ], () => { if (msgEl) msgEl.textContent = t.heardWord + ' "' + text + '"'; }, 'descSayHint');
 }
 // Said on a mic outside a card with no amount: the card named in it gets the description (without its name);
 // with no card named, a small window asks which card (tap or say it).
@@ -3603,13 +3771,12 @@ function jobDescFromHome(sentence, msg) {
   const added = c => {
     const parts = boxLabel(c.b, c.i).split(/\s+/).filter(Boolean).map(normWord);
     const text = sentenceWords(sentence).filter(w => !wordForms(w).some(f => parts.indexOf(f) >= 0)).join(' ') || sentence;
-    addToJobDesc(c.b, text);
-    msg.textContent = t.descAdded + ' (' + boxLabel(c.b, c.i) + '): "' + text + '"';
+    addToJobDesc(c.b, text, msg, boxLabel(c.b, c.i));
   };
   if (card) { added(card); return; }
   const options = [];
   boxes.forEach((b, i) => { if (!b.finished) options.push({ label: boxLabel(b, i), match: text => answerIsCard(text, b), pick: () => added({ b: b, i: i }) }); });
-  showPick(t.pickDescCard(sentence), options, () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; });
+  showPick(t.pickDescCard(sentence), options, () => { msg.textContent = t.heardWord + ' "' + sentence + '"'; }, 'cardSayHint');
 }
 // The description of the job, written next to the microphone. Saved with the card as "desc".
 function saveJobDesc(text) {
@@ -3945,7 +4112,8 @@ function soundKey(text) {
 // A small window with buttons to tap. Its microphone opens by itself, so the answer can just be said
 // ("אישי", "עסק", or a card's name). options: [{ label, cls, match(text) -> true when the answer means it, pick() }]
 let pickOpenId = 0;
-function showPick(message, options, onCancel) {
+// hintKey: the line that says what can be answered (by default: "אישי", "לקוחות" or a customer's name).
+function showPick(message, options, onCancel, hintKey) {
   const t = T();
   const ov = document.getElementById('pickOverlay');
   const list = document.getElementById('pickList');
@@ -3973,7 +4141,7 @@ function showPick(message, options, onCancel) {
   cancel.onclick = () => { close(); if (onCancel) onCancel(); };
   const canListen = !!(SR || dictation);
   micBtn.style.display = canListen ? '' : 'none';
-  micMsg.textContent = canListen ? hint('pickSayHint') : '';
+  micMsg.textContent = canListen ? hint(hintKey || 'pickSayHint') : '';
   const listenAnswer = () => startVoice(micBtn, micMsg, text => {
     if (done || id !== pickOpenId) return;
     const hit = options.filter(o => o.match && o.match(text));
@@ -4204,6 +4372,13 @@ document.getElementById('enterBtn').onclick = () => { resetPageState(); showStar
 document.getElementById('toFront').onclick = () => {
   resetPageState();
   if (currentId) { closeApp(); return; }
+  // From אישי: close it and go to ניהול כספים (not the first page).
+  if (document.getElementById('personalPage').style.display === 'block') {
+    document.getElementById('personalPage').style.display = 'none';
+    showStartPage(false);
+    closeApp();
+    return;
+  }
   ['homeRow', 'middleArea', 'fileBar', 'versionCards', 'app', 'personalPage'].forEach(id => { document.getElementById(id).style.display = 'none'; });
   document.getElementById('toFront').style.display = 'none';
   showStartPage(true);

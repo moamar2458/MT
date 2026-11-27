@@ -511,6 +511,31 @@ body.businessOpen #home, body.businessOpen .homeMicRow { display: none !importan
 /* Smaller cards: three in a row on a phone */
 #homeRow #home { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; align-content: start; }
 .tile { width: auto; height: 112px; padding: 8px 6px; gap: 2px; border-radius: 18px; }
+/* Phones: two bigger cards per row; "dense" (too many to fit): three smaller ones per row */
+@media (max-width: 600px) {
+  #homeRow #home { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #homeRow #home .tile { height: 132px; }
+  #homeRow #home .tile .name { font-size: 17px; margin-top: 20px; }
+  #homeRow #home .tile .num { font-size: 21px; }
+  #homeRow #home .tile .opened { font-size: 11px; }
+  #homeRow #home.dense { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #homeRow #home.dense .tile { height: var(--tileH, 104px); }
+  /* Very small cards: the name in one line between the ✎ and ✕, the amount under it */
+  #homeRow #home.tiny .tile { padding: 4px 4px; gap: 0; justify-content: center; }
+  #homeRow #home.tiny .tile .opened { display: none; }
+  #homeRow #home.tiny .tile .name { margin-top: 0; padding: 0 18px; font-size: 12px; line-height: 1.3; width: 100%; box-sizing: border-box; }
+  #homeRow #home.tiny .tile .num { font-size: 13px; line-height: 1.3; }
+  #homeRow #home.tiny .tile .rename, #homeRow #home.tiny .tile .removeTile { width: 16px; height: 16px; font-size: 9px; top: 3px; border-radius: 5px; }
+  #homeRow #home.tiny .tile .rename { inset-inline-end: 3px; }
+  #homeRow #home.tiny .tile .removeTile { inset-inline-start: 3px; }
+  #homeRow #home.dense .tile .name { font-size: 14px; margin-top: 15px; }
+  #homeRow #home.dense .tile .num { font-size: 16px; }
+  #homeRow #home.dense .tile .opened { font-size: 10px; }
+  body.compactBoxes #homeRow #home { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.compactBoxes #homeRow #home .tile { height: 68px; }
+  body.compactBoxes #homeRow #home .tile .name { font-size: 14px; margin-top: 8px; }
+  body.compactBoxes #homeRow #home .tile .num { font-size: 15px; }
+}
 .tile .name { font-size: 15px; margin-top: 16px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile .num { font-size: 17px; }
 .tile .opened { font-size: 10px; line-height: 1.25; }
@@ -581,7 +606,7 @@ body.pctOff .tenBar { display: none !important; }
 .panel.closed #taxArea, .panel.closed #bizAddForm { display: none !important; }
 /* עסק line: mic on the right, + on the left (in Hebrew), the title in the middle */
 .bizHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.panelTitle.bizHead::after { content: none; }
+.panelTitle.bizHead::after, .panel.closed .panelTitle.bizHead::after { content: none; }
 .bizHeadTitle { flex: 1; text-align: center; }
 .bizHeadTitle::after { content: ' \25B4'; }
 .panel.closed .bizHeadTitle::after { content: ' \25BE'; }
@@ -1002,7 +1027,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 34;
+const APP_VERSION = 35;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -1475,7 +1500,7 @@ const TEXT = {
     yesBtn: 'כן',
     noBtn: 'לא',
     yesNoHint: 'אפשר גם לומר "כן" או "לא".',
-    newCustomerAsk: (name, what) => 'אין לקוח בשם "' + name + '".\nלפתוח לקוח חדש בשם "' + name + '" ולהוסיף לו ' + what + '?',
+    newCustomerAsk: (name, what) => 'אין "' + name + '". לפתוח כרטיס חדש?\n(' + what + ')',
     newCustomerAdded: 'נפתח לקוח חדש: ',
     cancelledMsg: 'בוטל. שום דבר לא נוסף.',
     vatSwitch: 'עוסק מורשה',
@@ -1689,7 +1714,7 @@ const TEXT = {
     yesBtn: 'Yes',
     noBtn: 'No',
     yesNoHint: 'You can also say "yes" or "no".',
-    newCustomerAsk: (name, what) => 'There is no customer named "' + name + '".\nOpen a new customer named "' + name + '" and add ' + what + ' to it?',
+    newCustomerAsk: (name, what) => 'There is no "' + name + '". Open a new card?\n(' + what + ')',
     newCustomerAdded: 'New customer opened: ',
     cancelledMsg: 'Cancelled. Nothing was added.',
     vatSwitch: 'Licensed dealer (עוסק מורשה)',
@@ -3324,6 +3349,7 @@ function renderHome() {
   });
   const addBtn = document.getElementById('homeAddBtn');
   if (addBtn) addBtn.title = T().addBox;
+  fitHomeCards();
   renderHistory();
 }
 
@@ -3901,7 +3927,8 @@ function handleManyItems(sentence, kind, msg, segs) {
   if (saysPersonal(sentence)) { toPersonal(parts); done(parts, t.personalBtn); return; }
   if (card) { toCard(card, parts); done(parts, boxLabel(card.b, card.i)); return; }
   // A name that is no customer: open a new customer with that name and put all the items in it?
-  const newName = parts.map((x, k) => newCustomerName(x.plain, x.used, kind, k === 0 && (x.inP || x.inB))).find(Boolean);
+  let newName = parts.map(x => newCustomerName(x.plain, x.used, kind, x.inP || x.inB)).find(Boolean);
+  if (newName && nameLikeCards(newName)) newName = '';
   if (newName) {
     askNewCustomer(newName, listText(parts), msg, c => {
       parts.slice().reverse().forEach(x => {
@@ -4197,12 +4224,31 @@ function togglePanel(which) {
   openPanel = openPanel === which ? null : which;
   applyPanels();
 }
+// Two cards per row on a phone; when they would not all fit without scrolling, three smaller ones per row,
+// and with many cards the rows get shorter until they all fit (down to a small size; only then it scrolls).
+function fitHomeCards() {
+  const home = document.getElementById('home');
+  if (!home || !home.clientHeight || document.body.classList.contains('compactBoxes')) return;
+  home.classList.remove('dense', 'tiny');
+  home.style.removeProperty('--tileH');
+  if (home.scrollHeight <= home.clientHeight + 2) return;
+  home.classList.add('dense');
+  if (home.scrollHeight <= home.clientHeight + 2) return;
+  const rows = Math.ceil(home.querySelectorAll('.tile').length / 3);
+  const cs = getComputedStyle(home);
+  const room = home.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (parseFloat(cs.rowGap) || 10) * (rows - 1);
+  const h = Math.floor(room / rows);
+  home.style.setProperty('--tileH', Math.max(58, h) + 'px');
+  home.classList.toggle('tiny', h < 92);
+}
+window.addEventListener('resize', fitHomeCards);
 function applyPanels() {
   document.getElementById('businessBox').classList.toggle('closed', openPanel !== 'business');
   document.getElementById('jobSummary').classList.toggle('closed', openPanel !== 'summary');
   document.getElementById('historyBox').classList.toggle('closed', openPanel !== 'history');
   document.body.classList.toggle('compactBoxes', openPanel !== null);
   document.body.classList.toggle('businessOpen', openPanel === 'business'); // "עסק" open: the small customer cards are hidden
+  fitHomeCards();
 }
 
 // Inside a card the income list is closed: tapping the "כסף שנכנס" total opens it, tapping again closes it.
@@ -4344,7 +4390,8 @@ function soundKey(text) {
 // ("אישי", "עסק", or a card's name). options: [{ label, cls, match(text) -> true when the answer means it, pick() }]
 let pickOpenId = 0;
 // hintKey: the line that says what can be answered (by default: "אישי", "לקוחות" or a customer's name).
-function showPick(message, options, onCancel, hintKey) {
+// yesNo: the options are כן / לא, so there is no extra "ביטול" button.
+function showPick(message, options, onCancel, hintKey, yesNo) {
   const t = T();
   const ov = document.getElementById('pickOverlay');
   const list = document.getElementById('pickList');
@@ -4369,6 +4416,7 @@ function showPick(message, options, onCancel, hintKey) {
   });
   const cancel = document.getElementById('pickCancel');
   cancel.textContent = t.cancelBtn;
+  cancel.style.display = yesNo ? 'none' : '';
   cancel.onclick = () => { close(); if (onCancel) onCancel(); };
   const canListen = !!(SR || dictation);
   micBtn.style.display = canListen ? '' : 'none';
@@ -4380,11 +4428,13 @@ function showPick(message, options, onCancel, hintKey) {
   // Open the microphone by itself (a moment later, so the microphone that was just used has fully stopped).
   if (canListen) setTimeout(answers.start, 400);
 }
-// The name of a customer that is not in the list, from the words left after the amount, items, categories and
-// little words are taken away: a word with "ל" in front for spending ("לבתיה") or "מ" for income ("מבתיה"),
-// or (when allowFront: an item or category was found too) a name said before the amount ("בתיה 20 שקל צבע").
-// Returns '' when there is none.
-function newCustomerName(plain, used, kind, allowFront) {
+// The name of a card that is not in the list, from the words left after the amount, items, categories and little
+// words are taken away. Counts as a name:
+//  - a word with "ל" in front for spending ("ליפית") or "מ" for income ("מיפית");
+//  - for income, any word(s) left ("אלף שקל יפית": money in has no items, so what is left is who paid);
+//  - for spending, the words left when an item or category was found too ("100 שקל צבע יפית", "יפית 100 שקל צבע").
+// hadItem: an item or category was found. Returns '' when there is none.
+function newCustomerName(plain, used, kind, hadItem) {
   const words = sentenceWords(plain);
   const keep = (w, i) => used.indexOf(i) < 0 && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w)
     && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0 && !saysPersonal(w) && !BUSINESS_WORDS.test(w)
@@ -4398,12 +4448,22 @@ function newCustomerName(plain, used, kind, allowFront) {
     if (left[k + 1] && left[k + 1].i === left[k].i + 1) name.push(left[k + 1].w); // "למשה כהן"
     return name.join(' ');
   }
-  if (!allowFront) return '';
-  const firstNum = words.findIndex(w => /\d/.test(w) || isNumberWord(w));
-  const front = left.filter(x => firstNum >= 0 && x.i < firstNum);
-  return front.length && front.length <= 2 ? front.map(x => x.w).join(' ') : '';
+  if (kind !== 'income' && !hadItem) return ''; // spending with nothing known ("200 שקל דלק"): not a name
+  return left.length <= 2 ? left.map(x => x.w).join(' ') : '';
 }
-// "Open a new customer named <name>?" Yes: the card is made and onMade({ b, i }) puts the amounts in it. No: nothing is added.
+// A name that sounds like one or more cards already there (part of a name, or the same sound): then ask
+// "which one did you mean" instead of offering a new card.
+function nameLikeCards(name) {
+  const n = normKey(name), sk = soundKey(name);
+  if (!n) return false;
+  return boxes.some((b, i) => {
+    if (b.finished) return false;
+    const label = boxLabel(b, i), l = normKey(label), lk = soundKey(label);
+    return (n.length >= 2 && l.indexOf(n) >= 0) || (l.length >= 2 && n.indexOf(l) >= 0) || (sk.length >= 2 && lk === sk);
+  });
+}
+// "There is no <name>. Open a new card?" כן / לא, with the mic listening.
+// Yes: the card is made, onMade({ b, i }) puts the amounts in it, and the new card opens. No: nothing is added.
 function askNewCustomer(name, whatText, msg, onMade) {
   const t = T();
   showPick(t.newCustomerAsk(name, whatText), [
@@ -4416,9 +4476,10 @@ function askNewCustomer(name, whatText, msg, onMade) {
       renderHome();
       renderSummaries();
       msg.textContent = t.newCustomerAdded + name + ' · ' + whatText;
+      openCardPage(b.id); // show the new card
     } },
     { label: t.noBtn, cls: 'pickBusiness', match: saysNo, pick: () => { msg.textContent = t.cancelledMsg; } }
-  ], () => { msg.textContent = t.cancelledMsg; }, 'yesNoHint');
+  ], () => { msg.textContent = t.cancelledMsg; }, 'yesNoHint', true);
 }
 // Does a spoken answer name this card?
 function answerIsCard(text, b) { const m = findCard(text, null); return !!(m && m.b === b); }
@@ -4518,7 +4579,8 @@ function handleHomeText(sentence, kind, msgEl) {
   const used = [itemB, itemP, catB, catP].reduce((all, m) => m ? all.concat(m.used) : all, []);
   const match = findCard(plain, { used: used });
   // A name that is no customer ("20 שקל צבע לבתיה" with no בתיה): ask to open a new customer with that name.
-  const newName = match ? '' : newCustomerName(plain, used, kind, !!(itemB || itemP || catB || catP));
+  let newName = match ? '' : newCustomerName(plain, used, kind, !!(itemB || itemP || catB || catP));
+  if (newName && nameLikeCards(newName)) newName = '';
   if (newName) {
     askNewCustomer(newName, amount.toFixed(2) + (item ? ' ' + item : ''), msg, c => {
       const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, c), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };

@@ -579,6 +579,8 @@ body.pctOff .tenBar { display: none !important; }
 .vatBar .amount { font-family: var(--num); font-size: 24px; font-weight: 700; color: var(--blueText); direction: ltr; white-space: nowrap; }
 /* מס הכנסה, under סיכום העבודה */
 .panel.closed #taxArea { display: none; }
+#businessBox .taxBox { background: var(--surface); }
+#businessBox .taxArea { margin-top: 12px; }
 .taxArea { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .taxBox { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .taxHead { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; color: var(--text); }
@@ -795,7 +797,14 @@ html[dir=rtl] #editAmount { text-align: end; }
       <button id="jobCatBtn" class="viewTab" onclick="setJobView('category')" data-t="byCategory"></button>
     </div>
     <div class="summaryList" id="jobSummaryList"></div>
-    <!-- Income tax for this month, from the profit (income minus job spending) -->
+  </div>
+</div>
+<!-- Business (עסק): under "סיכום העבודה", in blue so the two lines look different -->
+<div id="businessRow">
+  <div class="summaryBox panel closed" id="businessBox">
+    <h2 class="sideTitle businessColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
+    <div class="summaryList" id="businessList"></div>
+    <!-- מס הכנסה for this month: its own box in עסק, from the profit (income minus job spending) -->
     <div class="taxArea" id="taxArea">
       <div class="taxBox">
         <div class="taxHead"><span data-t="incomeTaxTitle"></span><span class="taxMonth" id="taxMonth"></span></div>
@@ -811,13 +820,7 @@ html[dir=rtl] #editAmount { text-align: end; }
         <div class="taxLine taxTotal"><span data-t="vatMonthLabel"></span><bdi dir="ltr" id="vatMonth"></bdi></div>
       </div>
     </div>
-  </div>
-</div>
-<!-- Business (עסק): under "סיכום העבודה", in blue so the two lines look different -->
-<div id="businessRow">
-  <div class="summaryBox panel closed" id="businessBox">
-    <h2 class="sideTitle businessColor panelTitle" data-t="businessTitle" onclick="togglePanel('business')"></h2>
-    <div class="summaryList" id="businessList"></div>
+
   </div>
 </div>
 <div id="historyBox" class="panel closed">
@@ -968,7 +971,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -1249,7 +1252,7 @@ const TEXT = {
     hint: 'לחצו על המיקרופון ואמרו מספר, למשל "ארבעים". הוא יתווסף להוצאות עבודה.',
     incomeTitle: 'הכנסות',
     moneyIn: 'כסף שנכנס',
-    pctLabel: 'מההכנסה אחרי הוצאות עבודה',
+    pctLabel: 'מעשרות',
     jobList: 'רשימת הוצאות עבודה',
     jobSpending: 'הוצאות עבודה',
     afterJob: 'הכנסה אחרי הוצאות עבודה',
@@ -1393,8 +1396,8 @@ const TEXT = {
     cancelledMsg: 'בוטל. שום דבר לא נוסף.',
     vatSwitch: 'עוסק מורשה',
     vatSwitchNote: 'מציג תיבת מע"מ 18%. כבוי = עוסק פטור',
-    pctSwitch: 'תיבת האחוז האישי',
-    pctSwitchNote: 'התיבה עם ה-% בכרטיס לקוח',
+    pctSwitch: 'מעשרות',
+    pctSwitchNote: 'תיבת המעשרות (אחוז מההכנסה אחרי הוצאות עבודה) בכרטיס לקוח',
     vatCardLabel: 'מע"מ 18% (כלול בכסף שנכנס)',
     vatMonthLabel: 'מע"מ 18% החודש (כלול בהכנסות)',
     incomeTaxTitle: 'מס הכנסה',
@@ -1455,7 +1458,7 @@ const TEXT = {
     hint: 'Press the microphone and say a number, for example "forty". It is added to job spending.',
     incomeTitle: 'Income',
     moneyIn: 'Money coming in',
-    pctLabel: 'of my money in after job costs',
+    pctLabel: 'Tithes',
     jobList: 'Job spending history',
     jobSpending: 'Spending on the job',
     afterJob: 'Money in after job costs',
@@ -1599,8 +1602,8 @@ const TEXT = {
     cancelledMsg: 'Cancelled. Nothing was added.',
     vatSwitch: 'Licensed dealer (עוסק מורשה)',
     vatSwitchNote: 'Shows an 18% VAT box. Off = exempt dealer (עוסק פטור)',
-    pctSwitch: 'Personal percentage box',
-    pctSwitchNote: 'The % box in a customer card',
+    pctSwitch: 'Tithes',
+    pctSwitchNote: 'The tithes box (a % of income after job costs) in a customer card',
     vatCardLabel: 'VAT 18% (included in money in)',
     vatMonthLabel: 'VAT 18% this month (included in income)',
     incomeTaxTitle: 'Income tax',
@@ -2769,7 +2772,7 @@ function renderBusiness() {
   const t = T();
   const box = document.getElementById('businessList');
   box.innerHTML = '';
-  const money = v => (v < 0 ? '-' : '+') + Math.abs(v).toFixed(2);
+  const money = v => (v < 0 || Object.is(v, -0) ? '-' : '+') + Math.abs(v).toFixed(2); // spending with nothing in it shows -0.00
   const section = (text, sum, cls) => {
     const title = document.createElement('div');
     title.className = 'periodTitle bizTitle ' + cls;
@@ -4478,7 +4481,14 @@ document.getElementById('personalBtn').onclick = openPersonalPage;
 document.getElementById('enterBtn').onclick = () => { resetPageState(); showStartPage(false); closeApp(); document.getElementById('toFront').style.display = 'block'; };
 // The corner button goes back one page: from inside a box to the small boxes, from there to the first page.
 // Whatever was opened on the page being left is closed first.
+// Checked before anything is closed, so it still knows where we are.
 document.getElementById('toFront').onclick = () => {
+  const onCardsPage = !currentId && document.getElementById('homeRow').style.display !== 'none' && document.getElementById('personalPage').style.display !== 'block';
+  // ניהול כספים with עסק (or another line) open: close it and stay on ניהול כספים.
+  if (onCardsPage && openPanel !== null) {
+    resetPageState(); // closes the open line (and anything else opened on the page)
+    return;
+  }
   resetPageState();
   if (currentId) { closeApp(); return; }
   // From אישי: close it and go to ניהול כספים (not the first page).

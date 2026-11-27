@@ -1027,7 +1027,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 35;
+const APP_VERSION = 36;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -3177,7 +3177,7 @@ function renderSummaries() {
           r.items.slice().sort((a, b) => (b.day || '').localeCompare(a.day || '')).forEach(e => {
             const line = document.createElement('div');
             line.className = 'detailLine';
-            line.append(cell(e.date || ''), cell(shownNote(e) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
+            line.append(cell(e.date || ''), cell(withoutCardName(shownNote(e), boxes.find(x => x.id === id)) + (itemTag(e) ? ' · ' + itemTag(e) : '')), cell('-' + e.amount.toFixed(2), 'detailAmount'));
             editOnTap(line, e, () => { saveBoxes(); renderHome(); renderSummaries(); });
             detail.appendChild(line);
           });
@@ -3630,7 +3630,7 @@ function makeRow(e, i) {
   text.className = 'entryText';
   const note = document.createElement('span');
   note.className = 'note';
-  note.textContent = shownNote(e);
+  note.textContent = withoutCardName(shownNote(e), box);
   const date = document.createElement('span');
   date.className = 'entryDate';
   date.textContent = e.date || '';
@@ -3955,15 +3955,122 @@ function handleManyItems(sentence, kind, msg, segs) {
   });
 }
 
+// ===== Voice entries, step 1: the card's name =====
+// The name of a card is found first, with or without a letter in front (ל / מ / ב / ש / ו: "ליפית", "מיפית",
+// "יפית"). It only chooses the card. Then it is taken out of the sentence completely, and the amount and the item
+// are read from what is left ("100 שקל צבע ליפית" -> card יפית, amount 100, item צבע). So a name is never read
+// as a number ("שבע") or as an item, and never saved in the line.
+function nameForms(w) {
+  let n = normWord(w);
+  const forms = [n];
+  for (let k = 0; k < 2 && /^[ולבמש]/.test(n) && n.length - 1 >= 2; k++) { n = n.slice(1); forms.push(n); }
+  return forms;
+}
+// Returns { c: { b, i }, rest: the sentence without the name }, or null when no card's name is in it.
+// When two names fit ("דוד" and "דוד כהן"), the fuller one wins.
+function findNamedCard(sentence) {
+  const words = itemTokens(sentence); // keeps "3,000" and "12.5" whole
+  let best = null;
+  boxes.forEach((b, i) => {
+    if (b.finished) return;
+    const parts = boxLabel(b, i).split(/\s+/).filter(Boolean).map(normWord);
+    if (!parts.length || parts.join('').length < 2) return;
+    for (let st = 0; st + parts.length <= words.length; st++) {
+      const win = words.slice(st, st + parts.length);
+      if (nameForms(win[0]).indexOf(parts[0]) < 0) continue;
+      if (!win.slice(1).every((w, j) => normWord(w) === parts[j + 1])) continue;
+      if (!best || parts.length > best.len) best = { c: { b: b, i: i }, at: st, len: parts.length };
+    }
+  });
+  if (!best) return null;
+  const rest = words.filter((w, k) => k < best.at || k >= best.at + best.len).join(' ');
+  return { c: best.c, rest: rest };
+}
+// A saved line never shows the card's name (also older lines saved with the whole sentence).
+function withoutCardName(text, b) {
+  if (!text || !b) return text || '';
+  const parts = boxLabel(b, boxes.indexOf(b)).split(/\s+/).filter(Boolean).map(normWord);
+  const left = String(text).split(/\s+/).filter(w => w && !nameForms(w).some(f => parts.indexOf(f) >= 0)).join(' ');
+  return left;
+}
+// Adds lines ([{ text, amount }], the name already taken out) to a card: each with its item (customers' list).
+// Returns what was added, for the message.
+function addLinesToCard(c, kind, lines) {
+  const added = [];
+  lines.slice().reverse().forEach(x => {
+    const it = kind === 'job' ? findItem(withoutActions(x.text), 'business') : null;
+    const item = it ? it.name : '';
+    const entry = { kind: kind, amount: x.amount, note: cardNote(kind, x.text, item, c), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+    if (item) entry.item = item;
+    c.b.entries.unshift(entry);
+    added.unshift(entry);
+  });
+  saveBoxes();
+  renderHome();
+  renderSummaries();
+  if (currentId) render();
+  return added;
+}
+function addedText(kind, added, label) {
+  const t = T();
+  const one = e => e.amount.toFixed(2) + (kind !== 'income' && (e.item || e.note) ? ' ' + (e.item || e.note) : '');
+  const head = added.length > 1 ? t.addedMany.replace('{n}', added.length) + added.map(one).join(', ') : t.addedTo + added[0].amount.toFixed(2) + ' - ' + t.kinds[kind] + (kind !== 'income' && (added[0].item || added[0].note) ? ' · ' + (added[0].item || added[0].note) : '');
+  return head + (label ? ' (' + label + ')' : '');
+}
+// A sentence that named a card: amount(s) and item(s) from the rest go into it; with no amount, the rest is its description.
+function handleNamedCard(named, kind, msg) {
+  const c = named.c, body = named.rest, label = boxLabel(c.b, c.i);
+  const amount = findAmount(body);
+  if (amount === null) { addToJobDesc(c.b, body, msg, label); return; }
+  kind = sentenceAction(body) || kind;
+  const lines = splitItems(body) || [{ text: body, amount: amount }];
+  msg.textContent = addedText(kind, addLinesToCard(c, kind, lines), label);
+}
+
 // The microphone inside a card: a number goes to job spending, unless the sentence says "קיבלתי" (money in).
+// A card's name in the sentence chooses that card (this one, or another); it is taken out first.
 function handleText(sentence) {
   sentence = (sentence || '').trim();
   if (!sentence) return;
   const t = T();
+  const here = { b: cur(), i: boxes.indexOf(cur()) };
+  // 1. The card's name first: this card or another one; then it is taken out of the sentence.
+  const named = findNamedCard(sentence);
+  if (named && !(saysBusiness(named.rest) && (sentenceAction(named.rest) || 'job') === 'job')) {
+    const other = named.c.b !== here.b;
+    const body = named.rest;
+    const amount = findAmount(body);
+    if (amount === null) { addToJobDesc(named.c.b, body, heard, other ? boxLabel(named.c.b, named.c.i) : ''); return; }
+    const kind = sentenceAction(body) || 'job';
+    const lines = splitItems(body) || [{ text: body, amount: amount }];
+    heard.textContent = addedText(kind, addLinesToCard(named.c, kind, lines), other ? boxLabel(named.c.b, named.c.i) : '');
+    return;
+  }
   const amount = findAmount(sentence);
   // No amount: what was said is the job's description (added to the box next to the microphone).
   if (amount === null) { addToJobDesc(cur(), sentence, heard); return; }
   const kind = sentenceAction(sentence) || 'job';
+  // A name with "ל" in front that is no card ("100 שקל צבע לרונית"): offer a new card.
+  if (kind === 'job' && !saysBusiness(sentence)) {
+    const plain = withoutActions(sentence);
+    const it = findItem(plain, 'business');
+    const words = sentenceWords(plain);
+    const pre = words.map((w, i) => ({ w: w, i: i })).filter(x => (!it || it.used.indexOf(x.i) < 0) && /^ו?ל.{2,}$/.test(x.w) && !isNumberWord(x.w) && LINK_WORDS.indexOf(x.w) < 0 && !notAName(x.w));
+    let nn = pre.length ? newCustomerName(plain, it ? it.used : [], 'job', !!it) : '';
+    if (nn && nameLikeCards(nn)) nn = '';
+    if (nn) {
+      const lines = splitItems(sentence) || [{ text: sentence, amount: amount }];
+      askNewCustomer(nn, lines.map(x => x.amount.toFixed(2)).join(', ') + (it ? ' ' + it.name : ''), heard, c => {
+        lines.slice().reverse().forEach(x => {
+          const i2 = findItem(withoutActions(x.text), 'business');
+          const entry = { kind: 'job', amount: x.amount, note: cardNote('job', x.text, i2 ? i2.name : '', c), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+          if (i2) entry.item = i2.name;
+          c.b.entries.unshift(entry);
+        });
+      });
+      return;
+    }
+  }
   // Several amounts with "שקל" said at once: each one is its own line in this card.
   const many = splitItems(sentence);
   if (many) {
@@ -3972,7 +4079,7 @@ function handleText(sentence) {
       const it = kind === 'job' ? findItem(withoutActions(sg.text), 'business') : null;
       const name = it ? it.name : '';
       if (toBiz) addBusinessSpend(sg.amount, spendNote(sg.text, name, null), name);
-      else addEntry(kind, sg.amount, cardNote(kind, sg.text, name, null), name);
+      else addEntry(kind, sg.amount, cardNote(kind, sg.text, name, here), name);
     });
     heard.textContent = t.addedMany.replace('{n}', many.length) + many.map(sg => sg.amount.toFixed(2)).join(', ');
     return;
@@ -3983,7 +4090,7 @@ function handleText(sentence) {
     heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds.business + (item ? ' · ' + item.name : '');
     return;
   }
-  addEntry(kind, amount, cardNote(kind, sentence, item ? item.name : '', null), item ? item.name : '');
+  addEntry(kind, amount, cardNote(kind, sentence, item ? item.name : '', here), item ? item.name : '');
   heard.textContent = t.addedTo + amount.toFixed(2) + ' - ' + t.kinds[kind] + (item ? ' · ' + item.name : '') + ' (' + t.heardWord + ': "' + sentence + '")';
 }
 
@@ -4434,11 +4541,23 @@ function showPick(message, options, onCancel, hintKey, yesNo) {
 //  - for income, any word(s) left ("אלף שקל יפית": money in has no items, so what is left is who paid);
 //  - for spending, the words left when an item or category was found too ("100 שקל צבע יפית", "יפית 100 שקל צבע").
 // hadItem: an item or category was found. Returns '' when there is none.
+// Everyday words that start like "ל..." / "מ..." but are not names ("צבע לבן", "לסלון", "מקדמה").
+const NOT_NAMES = ['לבן', 'לבנה', 'לבנים', 'לבד', 'לכל', 'לפני', 'לאחר', 'לגבי', 'לבית', 'לעבודה', 'למטבח', 'לסלון', 'לחדר', 'לחדרים',
+  'לאמבטיה', 'לשירותים', 'לקיר', 'לקירות', 'לתקרה', 'לדלת', 'לדלתות', 'לחלון', 'לחלונות', 'לרצפה', 'למרפסת', 'לגינה', 'לגג', 'לבניין',
+  'לדירה', 'לפרויקט', 'לרכב', 'לאוטו', 'לטנדר', 'למשרד', 'למחסן', 'לכלים', 'לחומרים', 'לתיקון', 'לצביעה', 'לשיפוץ', 'להובלה', 'לדלק',
+  'לאוכל', 'לחשמל', 'למים', 'לבנק', 'למס', 'למעשרות', 'לחודש', 'לשבוע', 'ליום', 'לשעה', 'למטר', 'לליטר', 'לפחית', 'ליחידה',
+  'מקדמה', 'משכורת', 'מזומן', 'מזומנים', 'מהעבודה', 'מעבודה', 'מהבנק', 'מבנק', 'מהלקוח', 'מלקוח', 'משיפוץ', 'מצביעה', 'מתיקון',
+  'מכל', 'מחר', 'מאתמול', 'מהיום', 'מהחודש', 'משבוע', 'מעודף', 'מהחזר', 'מחשבונית', 'מקבלה', 'מבית'];
+// A word that is an item or a category of any list (with or without its letter in front) is not a name either.
+function isKnownWord(w) {
+  return nameForms(w).some(f => ['business', 'personal'].some(sc => getItems(sc).some(x => normKey(x.name) === f) || getCats(sc).some(c => normKey(c) === f)));
+}
+function notAName(w) { return NOT_NAMES.indexOf(normWord(w)) >= 0 || NOT_NAMES.indexOf(w) >= 0 || isKnownWord(w); }
 function newCustomerName(plain, used, kind, hadItem) {
   const words = sentenceWords(plain);
   const keep = (w, i) => used.indexOf(i) < 0 && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w)
     && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0 && !saysPersonal(w) && !BUSINESS_WORDS.test(w)
-    && !CUSTOMER_WORDS.test(w) && !isAction(w, SPEND_ACTIONS) && !isReceivedWord(w);
+    && !CUSTOMER_WORDS.test(w) && !isAction(w, SPEND_ACTIONS) && !isReceivedWord(w) && !notAName(w);
   const left = words.map((w, i) => ({ w: w.replace(/["'״׳`]/g, ''), i: i })).filter(x => x.w && keep(x.w, x.i));
   if (!left.length) return '';
   const pre = kind === 'income' ? /^ו?מ(.{2,})$/ : /^ו?ל(.{2,})$/;
@@ -4542,6 +4661,13 @@ function handleHomeText(sentence, kind, msgEl) {
   kind = kind || 'job';
   const msg = msgEl || document.getElementById('homeMicMsg');
   sentence = (sentence || '').trim();
+  // 1. A card's name (with or without ל / מ / ב / ש) chooses the card and is taken out; 2-3. the rest is read.
+  // ("אישי" / "לעסק" in the sentence still send it there.)
+  const named = sentence ? findNamedCard(sentence) : null;
+  if (named && !saysPersonal(named.rest) && !(saysBusiness(named.rest) && (sentenceAction(named.rest) || kind) !== 'income')) {
+    handleNamedCard(named, kind, msg);
+    return;
+  }
   const amount = findAmount(sentence);
   if (amount === null) { jobDescFromHome(sentence, msg); return; } // no amount: a job description
   // The words can come in any order. "קיבלתי" (with an amount or "שקל") always means money in,

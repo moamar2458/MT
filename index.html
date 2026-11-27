@@ -1002,7 +1002,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -1149,14 +1149,11 @@ function ask(message, withInput, def) {
       if (dictation && dictation.active()) dictation.stop().catch(() => {});
       resolve(v);
     };
-    const listenAnswer = () => startVoice(mic, micMsg, text => {
-      if (closed) return;
-      if (saysYes(text)) finish(true);
-      else if (saysNo(text)) finish(false);
-      else micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
-    });
-    mic.onclick = listenAnswer;
-    if (canListen) setTimeout(() => { if (!closed && ov.classList.contains('show') && !activeRec) listenAnswer(); }, 400);
+    const yesNo = [{ label: ok.textContent, match: saysYes, value: true }, { label: cancel.textContent, match: saysNo, value: false }];
+    const answers = listenForAnswer(mic, micMsg, () => !closed && ov.classList.contains('show'), (text, again) =>
+      actOnAnswer(text, yesNo, micMsg, o => finish(o.value), () => finish(false), again));
+    mic.onclick = answers.tap;
+    if (canListen) setTimeout(answers.start, 400);
     ok.onclick = () => finish(withInput ? inp.value : true);
     cancel.onclick = () => finish(withInput ? null : false);
     inp.onkeydown = e => { if (e.key === 'Enter') ok.onclick(); if (e.key === 'Escape') cancel.onclick(); };
@@ -1165,6 +1162,54 @@ function ask(message, withInput, def) {
   });
 }
 function askConfirm(message) { return ask(message, false); }
+// ===== Spoken answers to question boxes: the same rules for every question =====
+// options: [{ label, match(text) }]. Chosen, in this order: the option's exact name; the option's own words
+// (match: "כן"/"לא", "אישי", "עסק", "תוסיף"...); an option's name inside what was said (the longest one wins).
+// Returns the option, or null.
+function pickAnswer(text, options) {
+  const said = normKey(text);
+  if (!said) return null;
+  let hit = options.filter(o => normKey(o.label) === said);
+  if (hit.length === 1) return hit[0];
+  hit = options.filter(o => o.match && o.match(text));
+  if (hit.length === 1) return hit[0];
+  if (hit.length > 1) {
+    const named = hit.filter(o => { const n = normKey(o.label); return n.length >= 2 && said.indexOf(n) >= 0; });
+    if (named.length === 1) return named[0];
+  }
+  hit = options.filter(o => { const n = normKey(o.label); return n.length >= 2 && said.indexOf(n) >= 0; });
+  if (hit.length > 1) {
+    const longest = Math.max.apply(null, hit.map(o => normKey(o.label).length));
+    hit = hit.filter(o => normKey(o.label).length === longest);
+  }
+  return hit.length === 1 ? hit[0] : null;
+}
+// "ביטול" / "cancel" closes any question.
+function saysCancel(text) { return answerWords(text).some(w => /^(ביטול|בטל|תבטל|cancel)$/.test(w)); }
+// Listens for the answer to a question while it is open: starts by itself, and listens again (up to 3 times)
+// when nothing was heard or the answer was not understood. onText(text, listenAgain).
+function listenForAnswer(btn, msgEl, isOpen, onText) {
+  let tries = 0;
+  const go = () => {
+    if (!isOpen() || tries >= 3) return;
+    if (activeRec && activeRec.btn === btn) return; // already listening
+    tries++;
+    startVoice(btn, msgEl, text => { if (isOpen()) onText(text, again); }, () => { if (isOpen()) setTimeout(go, 700); });
+  };
+  const again = () => setTimeout(go, 1400); // after "not understood", so the message can be read
+  return {
+    start: go,
+    tap: () => { tries = 0; if (activeRec && activeRec.btn === btn) { activeRec.stop(); return; } go(); } // the mic button
+  };
+}
+// Acts on a spoken answer: the chosen option, or cancel, or "not understood" and listen again.
+function actOnAnswer(text, options, msgEl, onChosen, onCancel, listenAgain) {
+  const o = pickAnswer(text, options);
+  if (o) { onChosen(o, text); return; }
+  if (saysCancel(text)) { onCancel(); return; }
+  msgEl.textContent = T().heardWord + ' "' + text + '" - ' + T().pickNotUnderstood;
+  listenAgain();
+}
 // Spoken answers to a yes/no question.
 function answerWords(text) { return String(text || '').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ').split(/\s+/).filter(Boolean); }
 function saysYes(text) { return answerWords(text).some(w => /^(כן|כ ן|בטח|בטוח|נכון|אישור|מאשר|מאשרת|יאללה|סבבה|אוקיי|אוקי|כמובן|yes|yeah|yep|yup|sure|ok|okay|confirm)$/.test(w)); }
@@ -1182,7 +1227,9 @@ let browserSpeechFailed = false; // also kept for this visit, in case storage is
 
 // The recording that is running now (browser speech), so a second press on the same mic can stop it.
 let activeRec = null;
-function startVoice(btn, msgEl, onText) {
+// onNothing (optional): called when the mic ended without hearing anything, or could not start because
+// the browser was still finishing the last recording (so a question can listen again).
+function startVoice(btn, msgEl, onText, onNothing) {
   const t = T();
   // Pressing the same mic again: stop now and use what was said so far.
   if (activeRec) {
@@ -1201,7 +1248,7 @@ function startVoice(btn, msgEl, onText) {
       btn.classList.remove('listening');
       if (activeRec === me) activeRec = null;
       if (heardSoFar.trim()) onText(heardSoFar.trim());
-      else msgEl.textContent = t.cantHear;
+      else { msgEl.textContent = t.cantHear; if (onNothing) onNothing(); }
     };
     const me = {
       btn: btn,
@@ -1236,7 +1283,13 @@ function startVoice(btn, msgEl, onText) {
       if (isFinal) finish();
     };
     activeRec = me;
-    try { rec.start(); return; } catch (err) { activeRec = null; browserSpeechFailed = true; if (!dictation) { msgEl.textContent = t.noVoice; return; } }
+    try { rec.start(); return; } catch (err) {
+      activeRec = null;
+      // Still busy with the recording that just ended: not a real failure, try again in a moment.
+      if (err && err.name === 'InvalidStateError') { if (onNothing) setTimeout(onNothing, 0); return; }
+      browserSpeechFailed = true;
+      if (!dictation) { msgEl.textContent = t.noVoice; return; }
+    }
   }
   if (dictation) {
     if (dictation.active()) { msgEl.textContent = t.stopping; dictation.stop().catch(() => {}); return; }
@@ -1260,7 +1313,7 @@ function startVoice(btn, msgEl, onText) {
       // Stopped by a second press: the words not yet final still count.
       const said = (text + ' ' + lastPartial).trim();
       if (said) onText(said);
-      else if (e.reason === 'stopped' || e.reason === 'viewer_stopped') msgEl.textContent = t.cantHear;
+      else if (e.reason === 'stopped' || e.reason === 'viewer_stopped') { msgEl.textContent = t.cantHear; if (onNothing) onNothing(); }
       else explain(e.reason);
     }));
     // Must start straight from the click.
@@ -3717,11 +3770,13 @@ function findCard(sentence, itemMatch) {
         else if (sk.length >= 2 && soundKey(said) === sk) score = Math.max(score, 2);
       });
     }
-    return { x: x, score: score };
+    return { x: x, score: score, words: parts.length };
   });
   const best = Math.max(0, ...scored.map(s => s.score));
   if (best > 0) {
-    const top = scored.filter(s => s.score === best);
+    let top = scored.filter(s => s.score === best);
+    // "דוד כהן" said, with both "דוד" and "דוד כהן": the fuller name wins.
+    if (top.length > 1) { const most = Math.max(...top.map(s => s.words)); top = top.filter(s => s.words === most); }
     if (top.length === 1) return top[0].x;
     return null; // more than one card fits equally: ask
   }
@@ -4318,19 +4373,12 @@ function showPick(message, options, onCancel, hintKey) {
   const canListen = !!(SR || dictation);
   micBtn.style.display = canListen ? '' : 'none';
   micMsg.textContent = canListen ? hint(hintKey || 'pickSayHint') : '';
-  const listenAnswer = () => startVoice(micBtn, micMsg, text => {
-    if (done || id !== pickOpenId) return;
-    // An option is chosen by its own words (match) or by saying its name.
-    const said = normKey(text);
-    let hit = options.filter(o => o.match && o.match(text));
-    if (!hit.length) hit = options.filter(o => { const n = normKey(o.label); return n.length >= 2 && said.indexOf(n) >= 0; });
-    if (hit.length === 1) { close(); hit[0].pick(text); return; }
-    micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
-  });
-  micBtn.onclick = listenAnswer;
+  const answers = listenForAnswer(micBtn, micMsg, () => !done && id === pickOpenId && ov.classList.contains('show'), (text, again) =>
+    actOnAnswer(text, options, micMsg, (o, said) => { close(); o.pick(said); }, () => { close(); if (onCancel) onCancel(); }, again));
+  micBtn.onclick = answers.tap;
   ov.classList.add('show');
   // Open the microphone by itself (a moment later, so the microphone that was just used has fully stopped).
-  if (canListen) setTimeout(() => { if (!done && id === pickOpenId && ov.classList.contains('show') && !activeRec) listenAnswer(); }, 400);
+  if (canListen) setTimeout(answers.start, 400);
 }
 // The name of a customer that is not in the list, from the words left after the amount, items, categories and
 // little words are taken away: a word with "ל" in front for spending ("לבתיה") or "מ" for income ("מבתיה"),

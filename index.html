@@ -640,6 +640,8 @@ html[dir=rtl] #editAmount { text-align: end; }
 #jobSummaryList .periodRow > div { min-width: 0; overflow-wrap: anywhere; }
 .pickMicRow { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
 .pickMicRow .nameMicMsg { flex: 1; min-width: 0; text-align: start; }
+.pickMicRow .nameMic.listening { animation: micPulse 1.4s ease-in-out infinite; box-shadow: 0 0 0 6px rgba(167,139,250,0.3), 0 0 0 14px rgba(167,139,250,0.1); }
+.pickMicRow .nameMic.listening + .nameMicMsg { color: var(--violetText); font-weight: 700; }
 #pickList button.pickBusiness { background: var(--orangeBg); border-color: var(--orangeLine); color: var(--orange); }
 /* אישי: "הוספה מקטגוריה" and "פריטים וקטגוריות" at the bottom, always shown */
 .perTools { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 16px auto 8px; }
@@ -691,6 +693,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 <div id="askOverlay">
   <div class="nameDialog">
     <p id="askText"></p>
+    <div class="pickMicRow" id="askMicRow"><button class="nameMic" id="askMic" aria-label="mic"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/><path d="M8 21h8"/></svg></button><span class="nameMicMsg" id="askMicMsg"></span></div>
     <input type="text" id="askInput">
     <div class="dialogButtons">
       <button class="okBtn" id="askOk"></button>
@@ -965,7 +968,7 @@ html[dir=rtl] #editAmount { text-align: end; }
 // app/meta/boxes/<boxId>, one document per box. The rest of the app still talks to "LS", a stand-in for
 // localStorage that keeps everything in memory and writes the changes to the database a moment later.
 // The app's version. It goes up by one with every update; shown at the bottom of the first page and of ניהול כספים.
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 const LS_MEM = {};
 const META_KEYS = ['money_lang', 'money_names', 'money_emails', 'money_items', 'money_cats', 'money_hide_hints', 'money_theme', 'money_business', 'money_items_p', 'money_cats_p', 'money_vat', 'money_show_pct', 'money_tax_points'];
 let booted = false;
@@ -1093,9 +1096,33 @@ function ask(message, withInput, def) {
     document.getElementById('askText').textContent = message;
     inp.style.display = withInput ? '' : 'none';
     inp.value = withInput && def !== undefined && def !== null ? String(def) : '';
-    ok.textContent = T().okBtn;
-    cancel.textContent = T().cancelBtn;
-    const finish = v => { ov.classList.remove('show'); ok.onclick = cancel.onclick = inp.onkeydown = null; resolve(v); };
+    const t = T();
+    // A yes/no question: כן / לא, and the microphone opens by itself so the answer can be said.
+    ok.textContent = withInput ? t.okBtn : t.yesBtn;
+    cancel.textContent = withInput ? t.cancelBtn : t.noBtn;
+    const micRow = document.getElementById('askMicRow');
+    const mic = document.getElementById('askMic');
+    const micMsg = document.getElementById('askMicMsg');
+    const canListen = !withInput && !!(SR || dictation);
+    micRow.style.display = canListen ? '' : 'none';
+    micMsg.textContent = canListen ? t.yesNoHint : '';
+    let closed = false;
+    const finish = v => {
+      closed = true;
+      ov.classList.remove('show');
+      ok.onclick = cancel.onclick = inp.onkeydown = mic.onclick = null;
+      if (activeRec && activeRec.btn === mic) activeRec.cancel();
+      if (dictation && dictation.active()) dictation.stop().catch(() => {});
+      resolve(v);
+    };
+    const listenAnswer = () => startVoice(mic, micMsg, text => {
+      if (closed) return;
+      if (saysYes(text)) finish(true);
+      else if (saysNo(text)) finish(false);
+      else micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
+    });
+    mic.onclick = listenAnswer;
+    if (canListen) setTimeout(() => { if (!closed && ov.classList.contains('show') && !activeRec) listenAnswer(); }, 400);
     ok.onclick = () => finish(withInput ? inp.value : true);
     cancel.onclick = () => finish(withInput ? null : false);
     inp.onkeydown = e => { if (e.key === 'Enter') ok.onclick(); if (e.key === 'Escape') cancel.onclick(); };
@@ -1104,6 +1131,10 @@ function ask(message, withInput, def) {
   });
 }
 function askConfirm(message) { return ask(message, false); }
+// Spoken answers to a yes/no question.
+function answerWords(text) { return String(text || '').toLowerCase().replace(/[.,!?;:"'()\-]/g, ' ').split(/\s+/).filter(Boolean); }
+function saysYes(text) { return answerWords(text).some(w => /^(כן|כ ן|בטח|בטוח|נכון|אישור|מאשר|מאשרת|יאללה|סבבה|אוקיי|אוקי|כמובן|yes|yeah|yep|yup|sure|ok|okay|confirm)$/.test(w)); }
+function saysNo(text) { return answerWords(text).some(w => /^(לא|ביטול|בטל|תבטל|עזוב|no|nope|cancel|nah)$/.test(w)); }
 function askText(message, def) { return ask(message, true, def); }
 
 // The microphone: claude.ai speech-to-text, or the browser's own when that is all there is.
@@ -1354,6 +1385,12 @@ const TEXT = {
     amountBad: 'הקלידו סכום תקין.',
     customersLabel: 'לקוחות',
     versionLabel: 'גרסה',
+    yesBtn: 'כן',
+    noBtn: 'לא',
+    yesNoHint: 'אפשר גם לומר "כן" או "לא".',
+    newCustomerAsk: (name, what) => 'אין לקוח בשם "' + name + '".\nלפתוח לקוח חדש בשם "' + name + '" ולהוסיף לו ' + what + '?',
+    newCustomerAdded: 'נפתח לקוח חדש: ',
+    cancelledMsg: 'בוטל. שום דבר לא נוסף.',
     vatSwitch: 'עוסק מורשה',
     vatSwitchNote: 'מציג תיבת מע"מ 18%. כבוי = עוסק פטור',
     pctSwitch: 'תיבת האחוז האישי',
@@ -1554,6 +1591,12 @@ const TEXT = {
     amountBad: 'Type a valid amount.',
     customersLabel: 'Customers',
     versionLabel: 'Version',
+    yesBtn: 'Yes',
+    noBtn: 'No',
+    yesNoHint: 'You can also say "yes" or "no".',
+    newCustomerAsk: (name, what) => 'There is no customer named "' + name + '".\nOpen a new customer named "' + name + '" and add ' + what + ' to it?',
+    newCustomerAdded: 'New customer opened: ',
+    cancelledMsg: 'Cancelled. Nothing was added.',
     vatSwitch: 'Licensed dealer (עוסק מורשה)',
     vatSwitchNote: 'Shows an 18% VAT box. Off = exempt dealer (עוסק פטור)',
     pctSwitch: 'Personal percentage box',
@@ -1687,7 +1730,7 @@ function toggleLang() {
 
 // ---- Settings: hide the instruction texts (the ones that tell you what to say) ----
 // Saved as money_hide_hints ('1' = hidden), with the other settings, so it stays after a reload.
-const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint', 'pickSayHint', 'descSayHint', 'cardSayHint'];
+const HINT_KEYS = ['startHint', 'sayItemHint', 'personalEmpty', 'templateHint', 'pickSayHint', 'descSayHint', 'cardSayHint', 'yesNoHint'];
 function hintsHidden() { return LS.getItem('money_hide_hints') === '1'; }
 // An instruction text, or nothing when instructions are hidden.
 function hint(key) { return hintsHidden() ? '' : T()[key]; }
@@ -3684,6 +3727,19 @@ function handleManyItems(sentence, kind, msg, segs) {
   if (spend && saysBusiness(sentence)) { toBusiness(parts); done(parts, t.businessTitle); return; }
   if (saysPersonal(sentence)) { toPersonal(parts); done(parts, t.personalBtn); return; }
   if (card) { toCard(card, parts); done(parts, boxLabel(card.b, card.i)); return; }
+  // A name that is no customer: open a new customer with that name and put all the items in it?
+  const newName = parts.map((x, k) => newCustomerName(x.plain, x.used, kind, k === 0 && (x.inP || x.inB))).find(Boolean);
+  if (newName) {
+    askNewCustomer(newName, listText(parts), msg, c => {
+      parts.slice().reverse().forEach(x => {
+        const item = spend ? x.b.item : '';
+        const entry = Object.assign({ kind: kind, amount: x.amount, note: cardNote(kind, x.text, item, c) }, now());
+        if (item) entry.item = item;
+        c.b.entries.unshift(entry);
+      });
+    });
+    return;
+  }
   const mine = parts.filter(x => x.inP && !x.inB);   // only in אישי: no question
   const open = parts.filter(x => !(x.inP && !x.inB));
   if (mine.length) toPersonal(mine);
@@ -4144,7 +4200,10 @@ function showPick(message, options, onCancel, hintKey) {
   micMsg.textContent = canListen ? hint(hintKey || 'pickSayHint') : '';
   const listenAnswer = () => startVoice(micBtn, micMsg, text => {
     if (done || id !== pickOpenId) return;
-    const hit = options.filter(o => o.match && o.match(text));
+    // An option is chosen by its own words (match) or by saying its name.
+    const said = normKey(text);
+    let hit = options.filter(o => o.match && o.match(text));
+    if (!hit.length) hit = options.filter(o => { const n = normKey(o.label); return n.length >= 2 && said.indexOf(n) >= 0; });
     if (hit.length === 1) { close(); hit[0].pick(text); return; }
     micMsg.textContent = t.heardWord + ' "' + text + '" - ' + t.pickNotUnderstood;
   });
@@ -4152,6 +4211,46 @@ function showPick(message, options, onCancel, hintKey) {
   ov.classList.add('show');
   // Open the microphone by itself (a moment later, so the microphone that was just used has fully stopped).
   if (canListen) setTimeout(() => { if (!done && id === pickOpenId && ov.classList.contains('show') && !activeRec) listenAnswer(); }, 400);
+}
+// The name of a customer that is not in the list, from the words left after the amount, items, categories and
+// little words are taken away: a word with "ל" in front for spending ("לבתיה") or "מ" for income ("מבתיה"),
+// or (when allowFront: an item or category was found too) a name said before the amount ("בתיה 20 שקל צבע").
+// Returns '' when there is none.
+function newCustomerName(plain, used, kind, allowFront) {
+  const words = sentenceWords(plain);
+  const keep = (w, i) => used.indexOf(i) < 0 && !/\d/.test(w) && !/₪/.test(w) && !isNumberWord(w) && !SHEKEL_WORDS.test(w)
+    && FILLER_WORDS.indexOf(w) < 0 && LINK_WORDS.indexOf(w) < 0 && !saysPersonal(w) && !BUSINESS_WORDS.test(w)
+    && !CUSTOMER_WORDS.test(w) && !isAction(w, SPEND_ACTIONS) && !isReceivedWord(w);
+  const left = words.map((w, i) => ({ w: w.replace(/["'״׳`]/g, ''), i: i })).filter(x => x.w && keep(x.w, x.i));
+  if (!left.length) return '';
+  const pre = kind === 'income' ? /^ו?מ(.{2,})$/ : /^ו?ל(.{2,})$/;
+  const k = left.findIndex(x => pre.test(x.w));
+  if (k >= 0) {
+    const name = [left[k].w.match(pre)[1]];
+    if (left[k + 1] && left[k + 1].i === left[k].i + 1) name.push(left[k + 1].w); // "למשה כהן"
+    return name.join(' ');
+  }
+  if (!allowFront) return '';
+  const firstNum = words.findIndex(w => /\d/.test(w) || isNumberWord(w));
+  const front = left.filter(x => firstNum >= 0 && x.i < firstNum);
+  return front.length && front.length <= 2 ? front.map(x => x.w).join(' ') : '';
+}
+// "Open a new customer named <name>?" Yes: the card is made and onMade({ b, i }) puts the amounts in it. No: nothing is added.
+function askNewCustomer(name, whatText, msg, onMade) {
+  const t = T();
+  showPick(t.newCustomerAsk(name, whatText), [
+    { label: t.yesBtn, cls: 'pickPersonal', match: saysYes, pick: () => {
+      const b = { id: newBoxId(), name: name, entries: [], pct: 10, created: new Date().toLocaleDateString() };
+      boxes.push(b);
+      rememberName(name);
+      onMade({ b: b, i: boxes.length - 1 });
+      saveBoxes();
+      renderHome();
+      renderSummaries();
+      msg.textContent = t.newCustomerAdded + name + ' · ' + whatText;
+    } },
+    { label: t.noBtn, cls: 'pickBusiness', match: saysNo, pick: () => { msg.textContent = t.cancelledMsg; } }
+  ], () => { msg.textContent = t.cancelledMsg; }, 'yesNoHint');
 }
 // Does a spoken answer name this card?
 function answerIsCard(text, b) { const m = findCard(text, null); return !!(m && m.b === b); }
@@ -4250,6 +4349,16 @@ function handleHomeText(sentence, kind, msgEl) {
   // The words of the items and categories found are not the card's name.
   const used = [itemB, itemP, catB, catP].reduce((all, m) => m ? all.concat(m.used) : all, []);
   const match = findCard(plain, { used: used });
+  // A name that is no customer ("20 שקל צבע לבתיה" with no בתיה): ask to open a new customer with that name.
+  const newName = match ? '' : newCustomerName(plain, used, kind, !!(itemB || itemP || catB || catP));
+  if (newName) {
+    askNewCustomer(newName, amount.toFixed(2) + (item ? ' ' + item : ''), msg, c => {
+      const entry = { kind: kind, amount: amount, note: cardNote(kind, sentence, item, c), date: new Date().toLocaleDateString(), day: dayKey(new Date()) };
+      if (item && spend) entry.item = item;
+      c.b.entries.unshift(entry);
+    });
+    return;
+  }
   if (!match) {
     // No card named: the place whose items or categories were said gets it, with no question when it is
     // only in one place ("100 שקל חשמל" -> אישי). Asked only when it really is in more than one place.
